@@ -53,7 +53,13 @@
                   'а пока можно писать команды в поле ниже.',
         fileMode: 'Страница открыта файлом — микрофон в таком режиме не работает. ' +
                   'Запустите node server.js и откройте http://localhost:8080',
-        micError: 'Микрофон не отвечает. Проверьте разрешение для сайта.'
+        micError: 'Микрофон не отвечает. Проверьте разрешение для сайта.',
+        voice: 'Голос Бипа',
+        voiceAuto: 'Выбран автоматически',
+        voiceTry: 'Послушать',
+        voiceHi: 'Привет! Я Бип. Слышишь меня?',
+        voiceNone: 'В этом браузере нет голоса для этого языка.',
+        settings: 'Для взрослого'
       },
 
       say: {
@@ -176,7 +182,13 @@
                   'meanwhile you can type commands in the box below.',
         fileMode: 'The page was opened as a file, and the microphone does not work that way. ' +
                   'Run node server.js and open http://localhost:8080',
-        micError: 'The microphone is not responding. Check the site permission.'
+        micError: 'The microphone is not responding. Check the site permission.',
+        voice: 'Bip’s voice',
+        voiceAuto: 'Chosen automatically',
+        voiceTry: 'Listen',
+        voiceHi: 'Hello! I am Bip. Can you hear me?',
+        voiceNone: 'This browser has no voice for this language.',
+        settings: 'For the grown-up'
       },
 
       say: {

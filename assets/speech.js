@@ -107,19 +107,81 @@
   }
 
   // ── voice ─────────────────────────────────────────────────────────────
-  var voice = null;
+  //
+  // Which voice reads the lines matters more than it looks. System voices
+  // differ wildly — one sounds like a toy, the next like a railway station
+  // announcement — and a child who dislikes the voice stops talking to the
+  // robot altogether. So the choice is the grown-up's, remembered per
+  // language, and the pitch is nudged up on top of whatever they pick.
+  //
+  // These two numbers are the character of the voice. Raise the pitch and Bip
+  // becomes a smaller, sillier toy; drop it towards 1 and he turns into an
+  // adult reading instructions. The rate is a shade below normal because
+  // preschoolers lose the end of a fast sentence.
+  var RATE = 0.95;
+  var PITCH = 1.35;
+
+  var KEY = 'bip.voice.';
+  var voice = null, onVoices = null;
+
+  function saved() {
+    try { return localStorage.getItem(KEY + (window.Lang ? Lang.get() : 'en')); }
+    catch (e) { return null; }   // private mode
+  }
+
+  // Every system voice that speaks the game's current language. Anything else
+  // is worse than no voice at all: an English engine reading Russian is not
+  // funny to a four-year-old, it is unintelligible.
+  function voices() {
+    if (!window.speechSynthesis) return [];
+    var want = code().slice(0, 2);
+    return (speechSynthesis.getVoices() || []).filter(function (v) {
+      return v.lang && v.lang.slice(0, 2).toLowerCase() === want;
+    });
+  }
 
   function pickVoice() {
-    if (voice || !window.speechSynthesis) return voice;
-    var want = code().slice(0, 2);
-    var all = speechSynthesis.getVoices() || [];
-    for (var i = 0; i < all.length; i++) {
-      if (all[i].lang && all[i].lang.slice(0, 2).toLowerCase() === want) { voice = all[i]; break; }
+    if (voice) return voice;
+    var list = voices(), want = saved(), i;
+    if (!list.length) return null;
+
+    for (i = 0; i < list.length; i++) {
+      if (list[i].name === want) { voice = list[i]; return voice; }
     }
+
+    // Nothing chosen (or the chosen one is gone — voices come and go with the
+    // system): prefer one that runs on the device. Network voices pause
+    // before speaking, and the pause lands exactly where the child is waiting
+    // to find out what the robot did.
+    for (i = 0; i < list.length; i++) {
+      if (list[i].localService) { voice = list[i]; return voice; }
+    }
+    voice = list[0];
     return voice;
   }
+
+  function setVoice(name) {
+    voice = null;
+    try {
+      var k = KEY + (window.Lang ? Lang.get() : 'en');
+      if (name) localStorage.setItem(k, name); else localStorage.removeItem(k);
+    } catch (e) { /* private mode */ }
+    return pickVoice();
+  }
+
+  function voiceName() {
+    var v = pickVoice();
+    return v ? v.name : '';
+  }
+
   if (window.speechSynthesis) {
-    speechSynthesis.onvoiceschanged = function () { voice = null; pickVoice(); };
+    // The list is empty on the first call in Chrome and arrives later, so the
+    // interface has to be told when it finally shows up.
+    speechSynthesis.onvoiceschanged = function () {
+      voice = null;
+      pickVoice();
+      if (onVoices) onVoices(voices());
+    };
   }
 
   function say(text, done) {
@@ -128,8 +190,8 @@
     speechSynthesis.cancel();
     var u = new SpeechSynthesisUtterance(text);
     u.lang = code();
-    u.rate = 0.95;
-    u.pitch = 1.35;      // higher, so it sounds like a toy and not a newsreader
+    u.rate = RATE;
+    u.pitch = PITCH;     // higher, so it sounds like a toy and not a newsreader
     var v = pickVoice();
     if (v) u.voice = v;
     if (done) u.onend = done;
@@ -142,7 +204,11 @@
     stop: stop,
     relang: relang,
     say: say,
+    voices: voices,
+    voiceName: voiceName,
+    setVoice: setVoice,
     onPhrase: function (fn) { onPhrase = fn; },
-    onState: function (fn) { onState = fn; }
+    onState: function (fn) { onState = fn; },
+    onVoices: function (fn) { onVoices = fn; }
   };
 })();

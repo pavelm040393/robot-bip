@@ -27,11 +27,15 @@ const ROOT = path.join(__dirname, '..');
 const frames = [];
 const said = [];
 
+// Every canvas call the drawing code makes has to exist here, or the scene
+// throws on the first frame and every scenario below fails at once. Adding a
+// new brush stroke in scene.js means adding its method to this list.
+const gradient = () => ({ addColorStop() {} });
 const ctx = {
-  createLinearGradient: () => ({ addColorStop() {} }),
-  clearRect() {}, fillRect() {}, beginPath() {}, closePath() {},
-  moveTo() {}, lineTo() {}, arc() {}, arcTo() {}, ellipse() {},
-  fill() {}, stroke() {}, save() {}, restore() {}, translate() {}, rotate() {}
+  createLinearGradient: gradient, createRadialGradient: gradient,
+  clearRect() {}, fillRect() {}, beginPath() {}, closePath() {}, clip() {},
+  moveTo() {}, lineTo() {}, arc() {}, arcTo() {}, ellipse() {}, quadraticCurveTo() {},
+  fill() {}, stroke() {}, save() {}, restore() {}, translate() {}, rotate() {}, scale() {}
 };
 
 const sandbox = {
