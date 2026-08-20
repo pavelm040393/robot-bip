@@ -1,0 +1,11 @@
+node_modules/
+.env
+
+# Рабочий журнал — для себя, не для репозитория.
+STEPS.md
+
+# мусор ОС и редакторов
+Thumbs.db
+desktop.ini
+.DS_Store
+*.swp

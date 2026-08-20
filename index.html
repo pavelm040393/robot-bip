@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Бип — робот, который понимает буквально</title>
+<style>
+  :root {
+    --ink: #26313d;
+    --muted: #6b7a89;
+    --line: #dfd6c2;
+    --accent: #e8503a;
+    --panel: #fffdf7;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: #efe6d2;
+    color: var(--ink);
+    font: 16px/1.5 "Segoe UI", system-ui, -apple-system, sans-serif;
+  }
+
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 18px; display: grid;
+          grid-template-columns: minmax(0, 1fr) 320px; gap: 18px; align-items: start; }
+
+  canvas { width: 100%; display: block; border-radius: 14px;
+           box-shadow: 0 6px 24px rgba(0,0,0,.12); background: #f7f3e8; }
+
+  .stage { position: relative; }
+
+  /* Крупная кнопка микрофона: ребёнок жмёт её сам, читать он ещё не умеет,
+     поэтому вся кнопка — один большой значок с понятным состоянием. */
+  .mic {
+    position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 10px;
+    border: 0; border-radius: 999px; cursor: pointer;
+    padding: 12px 22px; font: inherit; font-weight: 600;
+    background: var(--accent); color: #fff;
+    box-shadow: 0 4px 14px rgba(232,80,58,.4);
+  }
+  .mic.on { background: #4bb563; box-shadow: 0 4px 14px rgba(75,181,99,.4); }
+  .mic .dot { width: 12px; height: 12px; border-radius: 50%; background: #fff; }
+  .mic.on .dot { animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .25; } }
+
+  .panel { background: var(--panel); border: 1px solid var(--line);
+           border-radius: 14px; padding: 16px; }
+  .panel + .panel { margin-top: 14px; }
+  .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
+              color: var(--muted); margin: 0 0 10px; }
+
+  .lvl-name { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
+  .lvl-learn { display: inline-block; font-size: 12px; padding: 2px 9px;
+               border-radius: 999px; background: #efe6d2; color: var(--muted);
+               margin-bottom: 10px; }
+  .lvl-task { margin: 0; color: #46525f; }
+
+  .row { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  button.b { border: 1px solid var(--line); background: #fff; color: var(--ink);
+             border-radius: 9px; padding: 8px 14px; font: inherit; cursor: pointer; }
+  button.b:hover { background: #f6f1e6; }
+  button.b[disabled] { opacity: .4; cursor: default; }
+
+  /* Ввод текстом — не для ребёнка, а для взрослого: проверить логику, когда
+     микрофона нет или когда надоело говорить вслух при отладке. */
+  .say { display: flex; gap: 8px; margin-top: 10px; }
+  .say input { flex: 1; min-width: 0; font: inherit; padding: 8px 10px;
+               border: 1px solid var(--line); border-radius: 9px; background: #fff; }
+
+  .log { max-height: 230px; overflow: auto; margin: 0; padding: 0; list-style: none;
+         font-size: 14px; }
+  .log li { padding: 7px 0; border-top: 1px dashed var(--line); }
+  .log li:first-child { border-top: 0; }
+  .log .who { color: var(--muted); font-size: 12px; }
+  .log .said { color: var(--ink); }
+  .log .got { color: var(--muted); font-size: 12px; font-style: italic; }
+  .log li.bip .said { color: #2f7d4a; }
+
+  .warn { background: #fff3f0; border: 1px solid #f3c9c0; color: #8d3a2a;
+          border-radius: 10px; padding: 12px; font-size: 14px; margin-bottom: 14px; }
+  .warn[hidden] { display: none; }
+
+  @media (max-width: 980px) {
+    .wrap { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="stage">
+    <canvas id="cv"></canvas>
+    <button class="mic" id="mic"><span class="dot"></span><span id="micText">Говорить</span></button>
+  </div>
+
+  <div>
+    <div class="warn" id="warn" hidden></div>
+
+    <div class="panel">
+      <h2>Задание <span id="lvlNum"></span></h2>
+      <p class="lvl-name" id="lvlName"></p>
+      <span class="lvl-learn" id="lvlLearn"></span>
+      <p class="lvl-task" id="lvlTask"></p>
+      <div class="row">
+        <button class="b" id="again">Сначала</button>
+        <button class="b" id="next">Дальше →</button>
+      </div>
+      <div class="say">
+        <input id="text" placeholder="или напишите команду" autocomplete="off">
+        <button class="b" id="send">Ок</button>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>Что услышал Бип</h2>
+      <ul class="log" id="log"></ul>
+    </div>
+  </div>
+</div>
+
+<script src="assets/dict.js"></script>
+<script src="assets/match.js"></script>
+<script src="assets/parser.js"></script>
+<script src="assets/speech.js"></script>
+<script src="assets/scene.js"></script>
+<script src="assets/levels.js"></script>
+<script src="assets/game.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var cv = document.getElementById('cv');
+  var logEl = document.getElementById('log');
+  var micBtn = document.getElementById('mic');
+  var micText = document.getElementById('micText');
+  var warn = document.getElementById('warn');
+  var listening = false;
+
+  function log(who, said, got, cls) {
+    var li = document.createElement('li');
+    if (cls) li.className = cls;
+    li.innerHTML = '<div class="who"></div><div class="said"></div><div class="got"></div>';
+    li.children[0].textContent = who;
+    li.children[1].textContent = said;
+    if (got) li.children[2].textContent = got; else li.children[2].remove();
+    logEl.insertBefore(li, logEl.firstChild);
+    while (logEl.children.length > 40) logEl.removeChild(logEl.lastChild);
+  }
+
+  Game.init({
+    onHeard: function (phrase, understood) { log('ребёнок', phrase, 'понял как: ' + understood); },
+    onSay:   function (text) { log('Бип', text, '', 'bip'); },
+    onLevel: function (level, i, total) {
+      document.getElementById('lvlNum').textContent = (i + 1) + ' из ' + total;
+      document.getElementById('lvlName').textContent = level.name;
+      document.getElementById('lvlLearn').textContent = 'учимся: ' + level.learn;
+      document.getElementById('lvlTask').textContent = level.task;
+      document.getElementById('next').disabled = (i + 1 >= total);
+      logEl.innerHTML = '';
+    },
+    onWin: function () { log('—', 'Задание пройдено', ''); }
+  });
+
+  Game.load(cv, 0);
+
+  // ── микрофон ──────────────────────────────────────────────────────────
+  if (!Speech.supported()) {
+    warn.hidden = false;
+    warn.textContent = 'Этот браузер не умеет распознавать речь. Нужен Chrome или Edge — ' +
+                       'а пока можно писать команды в поле ниже.';
+    micBtn.disabled = true;
+  } else if (location.protocol === 'file:') {
+    warn.hidden = false;
+    warn.textContent = 'Страница открыта файлом — микрофон в таком режиме не работает. ' +
+                       'Запустите node server.js и откройте http://localhost:8080';
+  }
+
+  Speech.onPhrase(function (text) { Game.handle(text); });
+
+  Speech.onState(function (state, text) {
+    if (state === 'error') {
+      warn.hidden = false;
+      warn.textContent = 'Микрофон не отвечает (' + text + '). Проверьте разрешение для сайта.';
+    }
+    if (state === 'hearing' && text) micText.textContent = text.slice(0, 24);
+    if (state === 'listening') micText.textContent = 'Слушаю…';
+  });
+
+  micBtn.addEventListener('click', function () {
+    listening = !listening;
+    micBtn.classList.toggle('on', listening);
+    if (listening) { Speech.start(); micText.textContent = 'Слушаю…'; }
+    else { Speech.stop(); micText.textContent = 'Говорить'; }
+  });
+
+  // ── ввод текстом ──────────────────────────────────────────────────────
+  var textEl = document.getElementById('text');
+  function send() {
+    var v = textEl.value.trim();
+    if (!v) return;
+    textEl.value = '';
+    Game.handle(v);
+  }
+  document.getElementById('send').addEventListener('click', send);
+  textEl.addEventListener('keydown', function (e) { if (e.key === 'Enter') send(); });
+
+  document.getElementById('again').addEventListener('click', function () { Game.again(cv); });
+  document.getElementById('next').addEventListener('click', function () { Game.next(cv); });
+})();
+</script>
+</body>
+</html>
