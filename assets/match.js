@@ -1,35 +1,39 @@
-// Сопоставление услышанного со словарём — с допуском на детскую речь.
+// Matching what was heard against the dictionary, with room for child speech.
 //
-// Ребёнок четырёх лет говорит «кащный» вместо «красный», глотает окончания и
-// половину звуков произносит не так, как их ждёт распознавалка, обученная на
-// взрослых. Требовать точного совпадения строк — значит выкинуть половину
-// правильных ответов и решить, что игра не работает.
+// A four-year-old says "kaschny" where an adult says "krasny", swallows
+// endings and pronounces half the sounds differently from what a recogniser
+// trained on adults expects. Demanding exact string equality throws away half
+// the correct answers and makes it look like the game is broken.
 //
-// Поэтому три сита, от дешёвого к дорогому:
-//   1) слово начинается с известного корня  — «красненький» → красный;
-//   2) слово целиком есть в списке          — «мяч»;
-//   3) расстояние Левенштейна ≤ 30% длины   — «кащный» → «красный» (2 правки).
+// So three sieves, cheapest first:
+//   1) the word starts with a known root  — "красненький" → красный;
+//   2) the word is in the list verbatim   — "ball";
+//   3) Levenshtein distance ≤ 30% of length — "кащный" → "красный" (2 edits).
 //
-// Третье сито работает только по ПОЛНЫМ словам и только от пяти букв, и это
-// важно. По корням его пускать нельзя: до «красн» тому же «кащный» уже три
-// правки, а вот «убери» до «бери» — всего одна, и робот начинает брать
-// вместо того, чтобы класть. Чем короче слово, тем больше чужого собирает
-// нечёткое сравнение, поэтому короткие слова — только точным совпадением.
+// The third sieve only ever runs on FULL words of five letters or more, and
+// that matters. Running it on roots is not allowed: "кащный" is three edits
+// from the stem "красн", while "убери" (put away) is a single edit from
+// "бери" (take) — and the robot starts picking things up instead of tidying
+// them away. The shorter the word, the more junk fuzzy matching collects.
 //
-// Порог 30% подобран на слух: на 25% «кащный» не проходит, на 40% путаются
-// «синий» и «сильный». Подбирать его заново придётся на своём ребёнке — у
-// каждого свой набор искажений.
+// This is also why English leans on exact matching much more than Russian
+// does: "ball", "red", "big" are all too short to fuzz safely, since "ball"
+// would happily match "wall", "call" and "tall".
 //
-//   Match.word('кащный', DICT.colors.red)   → true
-//   Match.find('дай красненький мяч', DICT.colors) → 'red'
+// The 30% threshold was tuned by ear: at 25% "кащный" no longer passes, at
+// 40% "синий" and "сильный" start colliding. Expect to retune it on your own
+// child — every child mangles words in their own way.
+//
+//   Match.word('кащный', DICT.colors.red)           → true
+//   Match.find('give me the red ball', DICT.colors) → 'red'
 (function () {
   'use strict';
 
   var TOLERANCE = 0.3;
-  var MIN_ROOT = 3;      // «мяч», «куб», «син» — короче уже опасно
-  var MIN_FUZZY = 5;     // ниже этой длины нечёткое сравнение только вредит
+  var MIN_ROOT = 3;      // "мяч", "куб", "red" — anything shorter is a trap
+  var MIN_FUZZY = 5;     // below this, fuzzy matching does more harm than good
 
-  // ё и е для распознавалки одно и то же, регистр тоже не важен.
+  // For a recogniser ё and е are the same letter, and case never matters.
   function norm(s) {
     return String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/[^а-яa-z0-9]/g, '');
   }
@@ -53,7 +57,7 @@
     return prev[b.length];
   }
 
-  // Похоже ли одно услышанное слово на понятие из словаря.
+  // Does one heard word mean this dictionary concept?
   function word(said, entry) {
     var s = norm(said);
     if (!s) return false;
@@ -68,21 +72,21 @@
     for (k = 0; k < words.length; k++) {
       var w = norm(words[k]);
       if (s === w) return true;
-      // Короткие слова («в», «на», «дай») — только точное совпадение: одна
-      // правка в слове из трёх букв превращает его в любое другое.
+      // Short words ("in", "on", "get") — exact match only: a single edit in a
+      // three-letter word turns it into some other three-letter word.
       if (w.length >= MIN_FUZZY && lev(s, w) <= Math.floor(w.length * TOLERANCE)) return true;
     }
 
     return false;
   }
 
-  // Режет фразу на слова. Знаки препинания распознавалка иногда вставляет
-  // сама («возьми, красный.») — они не должны приклеиваться к словам.
+  // Split a sentence into words. Recognisers sometimes add punctuation of
+  // their own ("take, the red one.") and it must not stick to the words.
   function split(phrase) {
     return String(phrase || '').toLowerCase().split(/[^а-яёa-z0-9]+/).filter(Boolean);
   }
 
-  // Ищет в фразе первое понятие из группы. Возвращает ключ или null.
+  // First concept from a group found anywhere in the sentence, or null.
   function find(phrase, group) {
     var parts = split(phrase);
     for (var i = 0; i < parts.length; i++) {
@@ -93,8 +97,8 @@
     return null;
   }
 
-  // Позиция слова из группы во фразе — нужна парсеру, чтобы понять,
-  // что сказано до предлога, а что после.
+  // Where in the sentence a group's word sits — the parser needs this to tell
+  // what was said before the preposition from what came after it.
   function findAt(parts, group) {
     for (var i = 0; i < parts.length; i++) {
       for (var key in group) {
@@ -106,5 +110,5 @@
     return null;
   }
 
-  window.Match = { word: word, find: find, split: split, findAt: findAt, lev: lev, norm: norm };
+  window.Match = { word: word, find: find, findAt: findAt, split: split, lev: lev, norm: norm };
 })();

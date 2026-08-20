@@ -1,14 +1,14 @@
-// Мир на канвасе: предметы, робот и его движения.
+// The world on the canvas: things, the robot, and how it moves.
 //
-// Здесь нет ни одного правила игры — только «поезжай туда», «возьми это»,
-// «урони», «станцуй». Что именно брать и когда ошибаться, решает game.js.
-// Разделение нужное: правила придётся переписывать после каждой встречи с
-// живым ребёнком, а движения останутся теми же.
+// Not a single game rule lives here — only "drive there", "grab that", "drop
+// it", "dance". What to grab and when to fail is decided by game.js. The
+// split is deliberate: the rules will be rewritten after every session with a
+// real child, while the movements stay as they are.
 //
-// Рисуется всё примитивами — кругами и прямоугольниками. Это не заглушка и
-// не лень: пока не проверено, что робот вообще понимает ребёнка, тратить
-// время на художника нельзя. Красивый робот, которого никто не понимает,
-// всё равно уедет в стол.
+// Everything is drawn with circles and rectangles. That is not a placeholder
+// and not laziness: until it is proven that the robot understands children,
+// spending time on an artist is wasted. A beautiful robot nobody can talk to
+// ends up in a drawer all the same.
 (function () {
   'use strict';
 
@@ -18,7 +18,7 @@
 
   var SIZE = { big: 46, small: 26 };
 
-  // ── мир ──────────────────────────────────────────────────────────────
+  // ── the world ────────────────────────────────────────────────────────
   function setup(canvas, level) {
     cv = canvas;
     ctx = cv.getContext('2d');
@@ -40,10 +40,9 @@
 
   function radius(it) { return SIZE[it.size] || SIZE.small; }
 
-  // Все предметы, подходящие под описание. Пустое поле в описании — это
-  // «не сказано», то есть подходит любое значение. Отсюда и берётся
-  // неоднозначность: «мяч» при трёх мячах вернёт три штуки, и на этом
-  // держится вся игра.
+  // Every thing matching a description. An empty field means "not said", so
+  // any value fits. That is where the ambiguity comes from: "ball" with three
+  // balls on the floor returns three — and the whole game rests on it.
   function match(desc) {
     if (!desc) return [];
     return items.filter(function (it) {
@@ -57,18 +56,20 @@
 
   function all() { return items.filter(function (it) { return !it.gone; }); }
 
-  // ── очередь движений ─────────────────────────────────────────────────
-  // Робот делает по шагу за раз: доехал, потянулся, взял, повёз. Очередь
-  // нужна, чтобы game.js писал сценарий целиком и не следил за временем.
+  // ── the movement queue ───────────────────────────────────────────────
+  // The robot does one step at a time: drove up, reached out, grabbed,
+  // carried. The queue lets game.js write the whole script at once instead of
+  // juggling timers.
   var onDone = null;
 
   function push(step) { queue.push(step); ensureLoop(); }
 
-  // Вместе с очередью гасим и отложенный колбэк. Иначе при смене уровня
-  // опустевшая очередь дёргает then() от прошлой сцены, и робот на новом
-  // задании произносит подсказку к предыдущему — «они разного цвета» там,
-  // где никаких цветов уже нет.
+  // Clearing the queue also cancels the pending callback. Otherwise, when the
+  // level changes, the emptied queue fires then() from the previous scene and
+  // the robot delivers a hint about the old task — "they're different
+  // colours" on a level where no colours are involved.
   function clear() { queue = []; onDone = null; }
+
   function busy() { return queue.length > 0; }
   function then(fn) { onDone = fn; }
 
@@ -103,8 +104,8 @@
       queue.shift();
 
     } else if (step.kind === 'drop') {
-      // Уроненное разлетается в стороны — иначе несколько предметов
-      // слипаются в одну кучу и не видно, что их было много.
+      // Dropped things scatter sideways; otherwise several of them land in
+      // one heap and you cannot see that there were many.
       var it = robot.hold.shift();
       if (it) {
         it.held = false;
@@ -133,7 +134,8 @@
       if (step.t >= (step.ms || 1800)) { robot.y = FLOOR; queue.shift(); }
 
     } else if (step.kind === 'shrug') {
-      // Растерянность: робот вертит головой, ища то, чего нет.
+      // Bewilderment: the robot swings its head around looking for something
+      // that is not there.
       step.t = (step.t || 0) + 16;
       robot.dir = Math.sin(step.t / 160) >= 0 ? 1 : -1;
       if (step.t >= (step.ms || 1400)) { robot.dir = 1; queue.shift(); }
@@ -142,7 +144,7 @@
       queue.shift();
     }
 
-    // Унесённое держится у руки.
+    // Whatever is being carried stays by the robot's hand.
     robot.hold.forEach(function (it, i) {
       it.x = robot.x + robot.dir * 44;
       it.y = FLOOR - 62 - i * 30;
@@ -152,7 +154,7 @@
     anim = requestAnimationFrame(tick);
   }
 
-  // ── рисование ────────────────────────────────────────────────────────
+  // ── drawing ──────────────────────────────────────────────────────────
   function draw() {
     if (!ctx) return;
     ctx.clearRect(0, 0, W, H);
@@ -170,9 +172,15 @@
     drawRobot();
   }
 
+  // Colours live here rather than in the dictionary: the dictionary is about
+  // words a child might say, and it is swapped out when the language changes.
+  var PAINT = {
+    red: '#e8503a', blue: '#3d7ee8', yellow: '#f2c230', green: '#4bb563'
+  };
+
   function drawItem(it) {
     var r = radius(it);
-    var col = (DICT.colors[it.color] || {}).css || '#888888';
+    var col = PAINT[it.color] || '#888888';
 
     ctx.save();
     ctx.translate(it.x, it.y);
@@ -259,8 +267,9 @@
     ctx.restore();
   }
 
-  // Лицо — единственное, что отличает «ой, я растяпа» от «получилось!».
-  // Вся эмоция робота живёт здесь и в движении, слов для этого мало.
+  // The face is the only thing separating "oops, I'm a klutz" from "I did
+  // it!". All of the robot's emotion lives here and in how it moves — words
+  // alone are not enough, especially for a child who cannot read.
   function drawFace() {
     var y = -78;
     ctx.fillStyle = '#8ef0ff';

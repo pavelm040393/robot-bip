@@ -1,2 +1,2 @@
-# Переводы строк одинаковые у всех, независимо от системы.
+# Same line endings for everyone, whatever the operating system.
 * text=auto eol=lf

@@ -1,151 +1,161 @@
-# Бип — робот, который понимает буквально
+# Bip — the robot that takes you literally
 
-Игра для детей 4–7 лет. На экране неуклюжий робот. Ребёнок командует ему
-голосом, робот выполняет — **ровно то, что услышал**.
+A game for children aged 4–7. There is a clumsy robot on the screen. The child
+gives it spoken commands, and the robot does **exactly what it heard**.
 
 ```
-— Возьми мяч!
-  (мячей три; Бип едет к каждому, хватает все, роняет)
-— Ой. Их тут много, я их все уронил. А они разного цвета. Какой брать?
-— Красный!
-  (берёт красный, пляшет)
+— Take the ball!
+  (there are three balls; Bip drives to each one, grabs them all, drops them)
+— Oops. There are lots of them, and I dropped them all.
+  But they are different colours. Which one?
+— The red one!
+  (picks up the red ball, dances)
 ```
 
-Ребёнок не учит слова по карточкам. Он обнаруживает, что «дай вон то» не
-работает, — и сам ищет слово, которого не хватило.
+The child is not drilled on vocabulary. They discover that "gimme that one"
+does not work — and go looking for the word that was missing.
 
-## Зачем это
+Available in **English and Russian**, switchable in the game.
 
-Взрослый всегда угадывает. Ребёнок тычет пальцем и мычит «вон то» — мама даёт
-правильное, потому что любит и знает контекст. Обратной связи ноль. Другой
-ребёнок не умеет объяснить, что именно не понял, — он просто теряет интерес.
+## Why this exists
 
-Робот не угадывает никогда. Это не жестокость, а единственный собеседник,
-который честно показывает, что речи бывает недостаточно.
+An adult always guesses. A child points and mumbles "that one", and their
+mother hands over the right thing, because she loves them and knows the
+context. There is no feedback at all. Another child cannot explain what they
+failed to understand — they simply lose interest.
 
-За этим стоит вполне конкретная вещь из психолингвистики — задачи на
-referential communication: описать предмет так, чтобы понял тот, кто не видит
-твоими глазами. Дошкольники решают их эгоцентрично («такой, как вчера»), и
-переход от «я сказал» к «меня поняли» — одна из главных вех развития речи.
+The robot never guesses. That is not cruelty; it is the only conversational
+partner that honestly shows a child when their words were not enough.
 
-Тренировать её обычно не на ком. Вот на ком.
+There is a well-studied idea behind this — referential communication tasks:
+describing an object so that someone who does not share your view can identify
+it. Preschoolers solve them egocentrically ("the one like yesterday"), and the
+shift from "I said it" to "I was understood" is a major milestone in language
+development.
 
-## Запуск
+There is usually nobody to practise it against. Here there is.
+
+## Running it
 
 ```bash
 node server.js      # → http://localhost:8080
 ```
 
-Node 18+, зависимостей нет, ставить нечего.
+Node 18+, no dependencies, nothing to install.
 
-Сервер нужен **только ради микрофона**: браузер не подпускает к нему страницы,
-открытые двойным щелчком (`file://`). Всё остальное — обычная статика.
+The server exists **only for the microphone's sake**: browsers refuse
+microphone access to pages opened straight from disk (`file://`). Everything
+else is plain static files.
 
-## Где это запускать
+## Where to run it
 
-Игра целиком работает в браузере, бэкенд ей не нужен — поэтому её можно
-положить на любой статический хостинг.
+The whole game runs in the browser and needs no backend, so it can be dropped
+onto any static host.
 
-| Куда | Как | Микрофон |
+| Where | How | Microphone |
 |---|---|---|
-| свой компьютер | `node server.js` | работает (`localhost` доверенный) |
-| планшет, чужой компьютер | выложить на Netlify Drop, GitHub Pages, Cloudflare Pages | работает (HTTPS) |
-| домашняя сеть по IP | `http://192.168.x.x:8080` | **не работает** — нужен HTTPS |
+| your own computer | `node server.js` | works (`localhost` is trusted) |
+| a tablet, someone else's machine | Netlify Drop, GitHub Pages, Cloudflare Pages | works (HTTPS) |
+| home network by IP | `http://192.168.x.x:8080` | **does not work** — HTTPS required |
 
-Самый быстрый способ дать ссылку ребёнку — перетащить папку проекта на
-[netlify.com/drop](https://app.netlify.com/drop): получится адрес вида
-`https://…netlify.app`, без регистрации и бесплатно.
+The quickest way to hand a child a link is to drag the project folder onto
+[netlify.com/drop](https://app.netlify.com/drop): you get a
+`https://….netlify.app` address, free and without signing up.
 
-## Что проверить первым делом
+## Check this first
 
-**Понимает ли браузер вашего ребёнка** — от этого зависит, имеет ли смысл всё
-остальное.
+**Whether the browser understands your child** — everything else depends on
+the answer.
 
 ```
 http://localhost:8080/tools/test-mic.html
 ```
 
-Дайте ребёнку сказать десять команд своими словами. Страница покажет, что
-услышал браузер, какие слова нашлись в словаре и какая доля фраз оказалась
-понятной.
+Let the child say ten commands in their own words. The page shows what the
+browser heard, which words were recognised, and what share of the phrases came
+through. The language switch there changes the recogniser as well, so test in
+the language the child actually speaks.
 
-- **больше 66%** — можно строить игру дальше;
-- **40–66%** — сначала микрофон получше и тихая комната, потом пополнить
-  словарь под то, как говорит именно ваш ребёнок;
-- **меньше 40%** — Web Speech API такую речь не тянет, дальше только локальный
-  Whisper, а это совсем другой объём работы.
+- **above 66%** — carry on building the game;
+- **40–66%** — try a better microphone and a quiet room first, then widen the
+  word lists to match how your child speaks;
+- **below 40%** — the Web Speech API cannot handle this speech; the only way
+  on is a local Whisper, which is a different scale of work.
 
-Разбор команд проверяется отдельно и без ребёнка:
+Parsing is checked separately, without a child:
 
 ```bash
 npm test
 ```
 
-Гонять после **любой** правки словаря: добавленное слово легко ломает
-соседнее — корень «мал» хватает «малиновый», «убери» цепляется за «бери».
+Run it after **any** dictionary edit. One added word breaks a neighbouring one
+more often than you would think: the Russian stem "мал" swallows "малиновый",
+and the English root "red" swallows "redo".
 
-## Как устроено
+## How it is put together
 
-Ни сборки, ни зависимостей, ни фреймворка. Скрипты подключаются тегами в
-нужном порядке, правишь файл — обновляешь страницу.
+No build step, no dependencies, no framework. Scripts are included with plain
+tags in the right order; edit a file, reload the page.
 
-| Файл | Что делает |
+| File | What it does |
 |---|---|
-| `assets/dict.js` | все слова, которые робот способен услышать |
-| `assets/match.js` | сравнение с допуском на детскую речь |
-| `assets/parser.js` | фраза → команда `{действие, предмет, адресат}` |
-| `assets/speech.js` | микрофон и голос робота |
-| `assets/scene.js` | канвас: предметы, робот, движения |
-| `assets/game.js` | **правила игры и все реплики** |
-| `assets/levels.js` | задания |
+| `assets/dict.js` | every word the robot can hear, in both languages |
+| `assets/i18n.js` | interface text, robot lines and level texts |
+| `assets/match.js` | matching with room for child pronunciation |
+| `assets/parser.js` | sentence → command `{action, thing, destination}` |
+| `assets/speech.js` | microphone and the robot's voice |
+| `assets/scene.js` | canvas: things, the robot, movement |
+| `assets/game.js` | **the rules** |
+| `assets/levels.js` | level layouts |
 
-Правила и движения разделены намеренно: правила придётся переписывать после
-каждой встречи с живым ребёнком, а движения останутся теми же.
+Rules and movement are deliberately separated: the rules get rewritten after
+every session with a real child, while the movements stay the same.
 
-Замысел, разбор решений и то, что решено **не** делать, — в
+The reasoning, and the things deliberately left undone, are in
 [DESIGN.md](DESIGN.md).
 
-## Три правила, которые нельзя нарушать
+## Three rules that must not be broken
 
-Они не про код. Они решают, будет ребёнок смеяться или плакать.
+They are not about code. They decide whether the child laughs or cries.
 
-1. **Вина всегда на роботе.** Не «ты неточно сказал», а «я растяпа».
-   Ребёнок и так весь день слышит, что говорит непонятно.
-2. **Проиграть нельзя.** Нет очков, таймеров и слова «неправильно».
-   Есть только «ещё не получилось».
-3. **Подсказывается форма, а не ответ.** Не «скажи: возьми красный мяч», а
-   растерянное «их тут три… и они разного цвета». Направление даём, слово
-   ребёнок находит сам — иначе он просто повторяет за роботом.
+1. **The robot is always at fault.** Never "you said it wrong", always "I'm
+   such a clumsy thing". A child hears "I don't understand you" often enough
+   already.
+2. **Losing is impossible.** No score, no timer, no word for "wrong". Only
+   "not yet".
+3. **Hint the shape, never the answer.** Not "say: take the red ball" but a
+   puzzled "there are three of them… and they're different colours". Give the
+   direction; let the child find the word.
 
-Последнее правило проверяется тестами: `tools/test-scene.js` следит, чтобы ни
-одна реплика не винила ребёнка и не называла ответ вслух.
+The third rule is enforced by tests: `tools/test-scene.js` checks, in both
+languages, that no line blames the child and none gives the answer away.
 
-## Что нужно и чего ждать не стоит
+## What you need, and what not to expect
 
-**Нужен Chrome или Edge.** Распознавание речи есть только там. На iPad и
-iPhone игра откроется и будет работать через поле ввода текстом, но говорить с
-роботом не выйдет: в Safari распознавания нет, а Chrome на iOS — это тот же
-Safari внутри.
+**Chrome or Edge.** Speech recognition exists nowhere else. On iPad and iPhone
+the game opens and works through the text box, but talking to the robot will
+not: Safari has no recognition, and Chrome on iOS is Safari underneath.
 
-**Нужен интернет.** Web Speech API не распознаёт речь на устройстве — он
-отправляет звук на серверы Google и получает текст обратно. В машине без сети
-или на даче игра молчит. По той же причине голос ребёнка уходит наружу: дома
-это терпимо, но для публичного проекта стоит либо предупреждать честно, либо
-переходить на локальный Whisper.
+**An internet connection.** The Web Speech API does not recognise speech on the
+device — it sends audio to Google's servers and gets text back. In a car with
+no signal the game stays silent. For the same reason a child's voice leaves the
+device: acceptable at home, but a public deployment should either say so
+plainly or move to a local Whisper.
 
-**Робот нарисован кругами и прямоугольниками.** Это не заглушка, а порядок
-работ: пока не проверено, что робот понимает ребёнка, тратить время на
-художника нельзя. Красивый робот, которого никто не понимает, всё равно уедет
-в стол.
+**A robot drawn from circles and rectangles.** Not a placeholder — an order of
+work. Until it is proven that the robot understands children, spending time on
+an artist is wasted. A beautiful robot nobody can talk to ends up in a drawer
+all the same.
 
-## Что дальше
+## What comes next
 
-- уровни с последовательностями («сначала… потом…») и условиями — это уже
-  алгоритмическое мышление, программирование без единой строчки кода;
-- смена ролей: робот командует, ребёнок исполняет и носится по квартире;
-- игра вдвоём — один описывает, другой собирает;
-- отчёт родителю: не активность в приложении, а рост речи.
+- levels with sequences ("first… then…") and conditions — that is algorithmic
+  thinking, programming without a line of code;
+- role reversal: the robot gives the orders and the child runs around the flat
+  carrying things out;
+- a two-player mode — one describes, the other collects;
+- a report for the parent: not app usage, but growth in how the child speaks.
 
-## Лицензия
+## Licence
 
 [MIT](LICENSE).

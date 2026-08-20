@@ -1,90 +1,32 @@
-// Правила игры: что робот делает с распознанной командой.
+// The rules: what the robot does with a recognised command.
 //
-// Здесь лежит вся педагогика, и здесь же — три правила, которые нельзя
-// нарушать. Они не про код, они про то, будет ребёнок смеяться или плакать:
+// All of the pedagogy lives here, and so do the three rules that must never
+// be broken. They are not about code — they decide whether the child laughs
+// or cries:
 //
-//   1. Вина всегда на роботе. Не «ты неточно сказал», а «я растяпа».
-//      Ребёнок и так весь день слышит, что сказал непонятно.
-//   2. Проиграть нельзя. Нет очков, таймеров и слова «неправильно».
-//      Есть только «ещё не получилось».
-//   3. Подсказывается форма, а не ответ. Не «скажи: возьми красный мяч»,
-//      а растерянное «их тут три… и они разного цвета». Направление даём,
-//      слово ребёнок находит сам — иначе он повторяет за роботом и не
-//      учится ничему.
+//   1. The robot is always at fault. Never "you said it wrong", always
+//      "I'm such a clumsy thing". A child hears "I don't understand you"
+//      often enough already.
+//   2. Losing is impossible. No score, no timer, no word for "wrong".
+//      Only "not yet".
+//   3. Hint the shape, never the answer. Not "say: take the red ball" but a
+//      puzzled "there are three of them… and they're different colours".
+//      Give the direction; let the child find the word. Otherwise they just
+//      repeat after the robot and learn nothing.
 //
-// Главный механизм: команда «возьми мяч» при трёх мячах не отвергается, а
-// выполняется буквально — робот хватает все три и роняет. Ошибка смешная, а
-// не обидная, и уточнение рождается само собой.
+// The core mechanism: "take the ball" with three balls present is not
+// rejected — it is obeyed literally. The robot grabs all three and drops
+// them. The mistake is funny rather than shaming, and the correction comes
+// from the child unprompted.
+//
+// Every line the robot speaks lives in i18n.js, in both languages.
 (function () {
   'use strict';
 
   var ui = {}, level = null, levelIndex = 0, done = false;
 
-  // ── реплики ──────────────────────────────────────────────────────────
-  // Вариантов по нескольку: одна и та же фраза на третий раз перестаёт
-  // смешить и начинает раздражать.
-  var SAY = {
-    manyTake: [
-      'Ой! Их тут много, я их все уронил.',
-      'Ай! Столько сразу мне не удержать.',
-      'Уронил… Я такой неуклюжий.'
-    ],
-    manyHintColor: [
-      'А они разного цвета. Какой брать?',
-      'Тут есть разные цвета. Какой нужен?'
-    ],
-    manyHintSize: [
-      'А они разного размера. Какой брать?',
-      // Здесь стоял вариант «один большой, другой маленький — какой?».
-      // Он называл оба значения вслух, и ребёнку оставалось повторить за
-      // роботом. Это подсказка ответом, а не формой, — против правила 3.
-      'А они по размеру разные. Какой нужен?'
-    ],
-    manyHintType: [
-      'А тут разные штуки лежат. Какая нужна?',
-      'Их тут несколько, и все разные.'
-    ],
-    none: [
-      'Хм… Я такого не вижу.',
-      'А где это? Я не нахожу.',
-      'Я поискал, но не нашёл.'
-    ],
-    noAction: [
-      'А что мне сделать?',
-      'Я слушаю! Что делать-то?'
-    ],
-    noTarget: [
-      'Сделать — понял. А с чем?',
-      'Хорошо! А что взять?'
-    ],
-    noDest: [
-      'Взял! А куда положить?',
-      'Держу. Куда его?'
-    ],
-    okTake: [
-      'Взял! Смотри!',
-      'Готово! Держу.',
-      'Вот он!'
-    ],
-    okPut: [
-      'Положил! Ура!',
-      'Готово! Всё на месте.'
-    ],
-    lost: [
-      'Ой, я загляделся. Скажи ещё разок?',
-      'Я не расслышал, повтори?',
-      'Шумно тут. Ещё разок?'
-    ],
-    win: [
-      'Ура! Мы справились!',
-      'Получилось! Ты меня хорошо научил.'
-    ]
-  };
-
-  function pick(list) { return list[Math.floor(Math.random() * list.length)]; }
-
-  function talk(key) {
-    var text = pick(SAY[key]);
+  function talk(group) {
+    var text = Lang.say(group);
     Speech.say(text);
     if (ui.onSay) ui.onSay(text);
     return text;
@@ -95,10 +37,10 @@
     if (ui.onSay) ui.onSay(text);
   }
 
-  // ── подсказка формы ──────────────────────────────────────────────────
-  // Смотрим, ЧЕМ найденные предметы отличаются друг от друга, и называем
-  // измерение — цвет, размер или вид. Ровно то слово, которого не хватило
-  // в команде. Само слово при этом не подсказываем.
+  // ── hinting the shape ─────────────────────────────────────────────────
+  // Look at how the matched things differ from each other and name that
+  // dimension — kind, colour or size. Precisely the word that was missing
+  // from the command, without ever giving away its value.
   function hintKey(list) {
     var colors = {}, sizes = {}, types = {};
     list.forEach(function (it) {
@@ -110,7 +52,7 @@
     return 'manyHintType';
   }
 
-  // ── движения ─────────────────────────────────────────────────────────
+  // ── movement helpers ──────────────────────────────────────────────────
   function goTo(x) { Scene.push({ kind: 'go', x: Math.max(80, Math.min(Scene.width - 80, x)) }); }
 
   function reach(it) {
@@ -121,15 +63,15 @@
 
   function faces(f) { Scene.push({ kind: 'face', face: f }); }
 
-  // ── разбор команды ───────────────────────────────────────────────────
+  // ── handling a command ────────────────────────────────────────────────
   function handle(phrase) {
     if (done) return;
-    if (Scene.busy()) return;          // робот занят — новые команды подождут
+    if (Scene.busy()) return;          // robot is busy; new commands can wait
 
     var cmd = Parser.parse(phrase);
     if (ui.onHeard) ui.onHeard(phrase, Parser.describe(cmd));
 
-    // Ничего знакомого. Вина — на роботе и на шуме, не на ребёнке.
+    // Nothing familiar at all. Blame the robot and the noise, never the child.
     if (!cmd.action && !cmd.target) {
       faces('confused');
       Scene.push({ kind: 'shrug', ms: 900 });
@@ -154,12 +96,13 @@
     return doIt(cmd, found[0]);
   }
 
-  // Несколько подходит — вот она, главная сцена игры.
+  // More than one match — this is the scene the whole game exists for.
   function tooMany(found) {
     var hint = hintKey(found);
 
     faces('oops');
-    // Робот честно едет к каждому и хватает — видно, что он старается.
+    // The robot honestly drives to each one and grabs it: you can see it
+    // trying, which is what makes the failure funny instead of arbitrary.
     found.forEach(function (it) {
       goTo(it.x);
       reach(it);
@@ -168,10 +111,10 @@
     Scene.push({ kind: 'wait', ms: 250 });
     Scene.push({ kind: 'drop' });
     Scene.push({ kind: 'face', face: 'confused' });
-    // Пауза перед подсказкой — шагом очереди, а не таймером. Реплики идут
-    // через один синтезатор, и новая обрывает предыдущую: без этой паузы
-    // «какой брать?» съедает «ой, я уронил», и ребёнок не понимает, что
-    // вообще произошло.
+    // The pause before the hint is a queue step, not a timer. Lines share one
+    // synthesiser and a new line cancels the previous one: without this pause
+    // "which one?" eats "oops, I dropped them", and the child never learns
+    // what actually happened.
     Scene.push({ kind: 'wait', ms: 900 });
 
     talk('manyTake');
@@ -223,9 +166,9 @@
     }
   }
 
-  // ── цель уровня ──────────────────────────────────────────────────────
-  // Цель описана в levels.js как «этих предметов на полу быть не должно».
-  // Проверяем после каждого удачного действия.
+  // ── the level goal ────────────────────────────────────────────────────
+  // Described in levels.js as "none of these may be left on the floor".
+  // Checked after every successful action.
   function checkGoal() {
     if (!level.goal) return;
     var left = Scene.match(level.goal);
@@ -238,15 +181,17 @@
     if (ui.onWin) ui.onWin(levelIndex);
   }
 
-  // ── уровни ───────────────────────────────────────────────────────────
+  // ── levels ────────────────────────────────────────────────────────────
   function load(canvas, index) {
     levelIndex = Math.max(0, Math.min(LEVELS.length - 1, index));
     level = LEVELS[levelIndex];
     done = false;
     Scene.clear();
     Scene.setup(canvas, level);
-    if (ui.onLevel) ui.onLevel(level, levelIndex, LEVELS.length);
-    if (level.intro) setTimeout(function () { talkText(level.intro); }, 500);
+
+    var texts = Lang.level(levelIndex);
+    if (ui.onLevel) ui.onLevel(texts, levelIndex, LEVELS.length);
+    if (texts.intro) setTimeout(function () { talkText(texts.intro); }, 500);
   }
 
   function next(canvas) {

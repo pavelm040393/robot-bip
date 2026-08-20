@@ -1,21 +1,23 @@
-// Разбор фразы в команду.
+// Turning a sentence into a command.
 //
-// Никакого разбора языка: берём слова, которые нашлись в словаре, и
-// раскладываем по трём корзинам — что делать, с чем, куда. Всё остальное
-// во фразе игнорируется, поэтому «ну возьми пожалуйста вон тот красненький
-// мячик» и «красный мяч» дают одну и ту же команду.
+// No language parsing at all: collect the words that exist in the dictionary
+// and sort them into three buckets — what to do, with which thing, where to.
+// Everything else in the sentence is ignored, which is why "well please pick
+// up that little red ball over there" and "take the red ball" produce exactly
+// the same command.
 //
-// Предлог делит фразу надвое: «положи МАЛЕНЬКИЙ КУБИК в БОЛЬШУЮ КОРОБКУ».
-// До предлога — что берём, после — куда кладём. Без этого деления два
-// набора признаков в одной фразе не различить.
+// The preposition cuts the sentence in half: "put the SMALL CUBE in the BIG
+// BOX". Before it — what we pick up, after it — where it goes. Without that
+// cut, two sets of adjectives in one sentence cannot be told apart.
 //
-//   Parser.parse('положи красный мяч в коробку') →
+//   Parser.parse('put the red ball in the box') →
 //   { action:'put', target:{type:'ball',color:'red'}, dest:{type:'box'} }
 (function () {
   'use strict';
 
-  // Признаки предмета из куска фразы. Пустые поля означают «не сказано» —
-  // именно они и порождают неоднозначность, на которой держится вся игра.
+  // Properties of a thing, taken from one half of the sentence. Empty fields
+  // mean "not said" — and those are exactly what create the ambiguity the
+  // whole game rests on.
   function thing(parts) {
     var d = {
       type:  pick(parts, DICT.types),
@@ -37,8 +39,8 @@
     var act = Match.findAt(parts, DICT.actions);
     var prep = Match.findAt(parts, DICT.preps);
 
-    // Предлог до действия — не разделитель, а мусор распознавания
-    // («в общем, возьми мяч»). Считаем, что его нет.
+    // A preposition before the verb is noise, not a separator ("in any case,
+    // take the ball"). Treat it as absent.
     if (prep && act && prep.at < act.at) prep = null;
 
     var head = prep ? parts.slice(0, prep.at) : parts;
@@ -57,9 +59,9 @@
     return { phrase: phrase, action: null, target: null, dest: null, prep: null };
   }
 
-  // Человеческая запись команды — для журнала на экране и для отладки.
+  // A human-readable command — for the on-screen log and for debugging.
   function describe(cmd) {
-    if (!cmd.action && !cmd.target) return 'ничего не понял';
+    if (!cmd.action && !cmd.target) return Lang.t('ui.nothing');
     var out = cmd.action ? DICT.actions[cmd.action].title : '?';
     if (cmd.target) out += ' ' + thingText(cmd.target);
     if (cmd.dest) out += ' → ' + thingText(cmd.dest);
@@ -71,7 +73,7 @@
     if (t.size) s.push(DICT.sizes[t.size].title);
     if (t.color) s.push(DICT.colors[t.color].title);
     if (t.type) s.push(DICT.types[t.type].title);
-    return s.join(' ') || 'что-то';
+    return s.join(' ') || Lang.t('ui.something');
   }
 
   window.Parser = { parse: parse, describe: describe, thingText: thingText };

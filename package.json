@@ -1,7 +1,7 @@
 {
   "name": "robot-bip",
   "version": "0.1.0",
-  "description": "Бип — робот, который выполняет команды буквально. Игра, которая учит ребёнка говорить так, чтобы его поняли.",
+  "description": "Bip - a robot that takes children literally. A game that teaches a child to say things so they are understood.",
   "license": "MIT",
   "private": true,
   "type": "commonjs",

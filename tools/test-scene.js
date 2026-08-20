@@ -1,15 +1,20 @@
-// Проверка сценариев игры целиком — без браузера.
+// Whole-game scenarios — no browser required.
 //
 //   node tools/test-scene.js
 //
-// Проверяет то, ради чего игра существует: что неполная команда приводит к
-// смешной ошибке, а полная — к успеху. Разбор фразы проверяется отдельно
-// (test-parser.js), здесь важно поведение робота.
+// This checks the thing the game exists for: that an incomplete command leads
+// to a funny failure and a complete one leads to success. Sentence parsing is
+// checked separately (test-parser.js); here it is the robot's behaviour that
+// matters.
 //
-// Канвас и requestAnimationFrame подменены заглушками, кадры прокручиваются
-// вручную. Так тест идёт мгновенно и не зависит от того, в фокусе вкладка
-// или нет: в фоне Chrome замораживает анимацию, и «проверить в браузере»
-// незаметно превращается в «посмотреть на застывшую картинку».
+// Every scenario runs in BOTH languages. A line group that quietly loses a
+// variant in one language, or a rule that only holds in Russian, is exactly
+// the kind of thing nobody notices by hand.
+//
+// The canvas and requestAnimationFrame are stubbed and frames are advanced by
+// hand. That makes the run instant and independent of whether a tab is
+// focused: in the background Chrome freezes animation, and "check it in the
+// browser" silently turns into staring at a frozen picture.
 'use strict';
 
 const fs = require('fs');
@@ -18,7 +23,7 @@ const vm = require('vm');
 
 const ROOT = path.join(__dirname, '..');
 
-// ── заглушки браузера ───────────────────────────────────────────────────
+// ── browser stubs ───────────────────────────────────────────────────────
 const frames = [];
 const said = [];
 
@@ -32,36 +37,35 @@ const ctx = {
 const sandbox = {
   console,
   window: {},
+  navigator: { language: 'en' },
   requestAnimationFrame: (fn) => { frames.push(fn); return frames.length; },
-  // Отложенное выполняем сразу: приветствие уровня висит на таймере, а
-  // ждать его в тесте нечего.
+  // Deferred work runs immediately: the level greeting sits on a timer and
+  // there is nothing to wait for in a test.
   setTimeout: (fn) => { if (typeof fn === 'function') fn(); return 0; },
   Math, JSON, Object, Array, String, Number, Date
 };
 vm.createContext(sandbox);
 
-['dict.js', 'match.js', 'parser.js', 'scene.js', 'levels.js', 'game.js'].forEach((f) => {
+['dict.js', 'i18n.js', 'match.js', 'parser.js', 'scene.js', 'levels.js', 'game.js'].forEach((f) => {
   vm.runInContext(fs.readFileSync(path.join(ROOT, 'assets', f), 'utf8'), sandbox);
   Object.assign(sandbox, sandbox.window);
 });
 
-// Голос робота: вместо звука — запись в список, по нему и проверяем.
-sandbox.Speech = { say: (t) => said.push(t), supported: () => false };
+// The robot's voice: instead of sound, a list of lines — that is what the
+// checks read.
+sandbox.Speech = { say: (t) => said.push(t), supported: () => false, relang: () => {} };
 
-const { Scene, Game } = sandbox;
+const { Scene, Game, Lang } = sandbox;
 const canvas = { getContext: () => ctx, width: 0, height: 0 };
 
-// Прокрутить анимацию до конца очереди (или пока не надоест).
+// Play the queue to the end (or give up on a step that never finishes).
 function run(limit = 4000) {
   let n = 0;
-  while (frames.length && n++ < limit) {
-    const fn = frames.shift();
-    fn();
-  }
-  if (n >= limit) throw new Error('очередь не кончилась — где-то вечный шаг');
+  while (frames.length && n++ < limit) frames.shift()();
+  if (n >= limit) throw new Error('the queue never emptied — some step runs forever');
 }
 
-// Прокрутить ровно несколько кадров — оставить робота на полпути.
+// Advance a few frames only, leaving the robot halfway.
 function runSome(n) {
   while (frames.length && n-- > 0) frames.shift()();
 }
@@ -72,111 +76,146 @@ function reset(levelIndex) {
   Game.init({});
   Game.load(canvas, levelIndex);
   run();
-  said.length = 0;      // приветствие робота в проверках не участвует
+  said.length = 0;      // the greeting takes no part in the checks
 }
 
-function items() {
-  return Scene.all().map((i) => ({ type: i.type, color: i.color, size: i.size, held: i.held }));
-}
-
-// ── случаи ──────────────────────────────────────────────────────────────
 let failed = 0;
 
 function check(name, ok, extra) {
-  if (ok) { console.log(`ок      ${name}`); return; }
+  if (ok) { console.log(`ok    ${name}`); return; }
   failed++;
-  console.log(`ПРОВАЛ  ${name}`);
-  if (extra) console.log(`        ${extra}`);
+  console.log(`FAIL  ${name}`);
+  if (extra) console.log(`      ${extra}`);
 }
 
-// 1. Главный механизм: мячей три, сказано «мяч» — робот хватает все и роняет.
-reset(0);
-Game.handle('возьми мяч');
-run();
-check('«возьми мяч» при трёх мячах — робот роняет, ничего не взято',
-  Scene.robot().hold.length === 0 && items().every((i) => !i.held),
-  'в руке: ' + Scene.robot().hold.length);
+// ── the same scenarios, in each language ────────────────────────────────
+const SUITES = {
+  ru: {
+    takeAny:   'возьми мяч',
+    takeRed:   'возьми красный мяч',
+    takeGhost: 'возьми зелёный кубик',
+    nonsense:  'мама пойдём гулять',
+    putRed:    'положи красный мяч в коробку',
+    putNoDest: 'положи красный мяч',
+    putAny:    'положи мяч в коробку',
+    dropped:    /уронил|удержать|неуклюж/i,
+    blaming:    /ты .*(сказал|неправильно)|неверно|ошибка/i,
+    winning:    /ура|справились|получилось/i,
+    aboutSize:  /размер/i,
+    givesAway:  /большой мяч|маленький мяч/i,
+    notFound:   /не вижу|не нахожу|не нашёл/i,
+    distracted: /загляделся|не расслышал|шумно/i,
+    asksWhere:  /куда/i,
+    hintish:    /разного цвета|уронил|удержать/i
+  },
+  en: {
+    takeAny:   'take the ball',
+    takeRed:   'take the red ball',
+    takeGhost: 'take the green cube',
+    nonsense:  'mummy lets go outside',
+    putRed:    'put the red ball in the box',
+    putNoDest: 'put the red ball',
+    putAny:    'put the ball in the box',
+    dropped:    /dropped|too many|clumsy/i,
+    blaming:    /you said|you were wrong|incorrect/i,
+    winning:    /hooray|we did it|it worked/i,
+    aboutSize:  /size/i,
+    givesAway:  /big ball|small ball/i,
+    notFound:   /do not see|cannot find|did not find/i,
+    distracted: /distracted|did not catch|noisy/i,
+    asksWhere:  /where/i,
+    hintish:    /different colours|dropped|too many/i
+  }
+};
 
-check('и говорит про свою неуклюжесть, а не про ошибку ребёнка',
-  said.some((t) => /уронил|удержать|неуклюж/i.test(t)),
-  said.join(' | '));
+Object.keys(SUITES).forEach((lang) => {
+  const s = SUITES[lang];
+  Lang.set(lang);
+  sandbox.DICT = sandbox.window.DICT;
+  console.log(`\n── ${lang} ─────────────────────────────────────────`);
 
-check('ни одна реплика не винит ребёнка',
-  !said.some((t) => /ты .*(сказал|неправильно)|неверно|ошибка/i.test(t)),
-  said.join(' | '));
+  // 1. The core mechanism: three balls, "ball" was said — grab all, drop all.
+  reset(0);
+  Game.handle(s.takeAny);
+  run();
+  check('"take the ball" with three balls — everything dropped, nothing held',
+    Scene.robot().hold.length === 0 && Scene.all().every((i) => !i.held),
+    'in hand: ' + Scene.robot().hold.length);
 
-// 2. Уточнили цвет — робот берёт ровно один и радуется.
-said.length = 0;
-Game.handle('возьми красный мяч');
-run();
-const red = Scene.all().filter((i) => i.color === 'red')[0];
-check('«возьми красный мяч» — взят ровно один, и именно красный',
-  Scene.robot().hold.length === 1 && red && red.held === true);
+  check('the robot blames its own clumsiness',
+    said.some((t) => s.dropped.test(t)), said.join(' | '));
 
-check('цель уровня засчитана',
-  said.some((t) => /ура|справились|получилось/i.test(t)),
-  said.join(' | '));
+  check('no line blames the child',
+    !said.some((t) => s.blaming.test(t)), said.join(' | '));
 
-// 3. Подсказка называет измерение, но не значение.
-reset(1);   // два синих мяча, разный размер
-Game.handle('возьми мяч');
-run();
-check('подсказка про размер, без называния ответа',
-  said.some((t) => /размер/i.test(t)) && !said.some((t) => /большой мяч|маленький мяч/i.test(t)),
-  said.join(' | '));
+  // 2. Colour named — exactly one is taken.
+  said.length = 0;
+  Game.handle(s.takeRed);
+  run();
+  const red = Scene.all().filter((i) => i.color === 'red')[0];
+  check('naming the colour takes exactly one, and the right one',
+    Scene.robot().hold.length === 1 && red && red.held === true);
 
-// 4. Нет такого предмета — робот не находит, но не ругается.
-reset(0);
-Game.handle('возьми зелёный кубик');
-run();
-check('несуществующий предмет — робот разводит руками',
-  said.some((t) => /не вижу|не нахожу|не нашёл/i.test(t)),
-  said.join(' | '));
+  check('the level goal is registered',
+    said.some((t) => s.winning.test(t)), said.join(' | '));
 
-// 5. Непонятная фраза — вина на роботе и на шуме.
-reset(0);
-Game.handle('мама пойдём гулять');
-run();
-check('непонятная фраза — робот отвлёкся сам',
-  said.some((t) => /загляделся|не расслышал|шумно/i.test(t)),
-  said.join(' | '));
+  // 3. The hint names the dimension, never the value.
+  reset(1);   // two blue balls, different sizes
+  Game.handle(s.takeAny);
+  run();
+  check('hint mentions size without giving away the answer',
+    said.some((t) => s.aboutSize.test(t)) && !said.some((t) => s.givesAway.test(t)),
+    said.join(' | '));
 
-// 6. Предлог: предмет уезжает в коробку.
-reset(4);
-Game.handle('положи красный мяч в коробку');
-run();
-check('«положи … в коробку» — мяч убран со сцены',
-  !Scene.all().some((i) => i.type === 'ball' && i.color === 'red'),
-  items().map((i) => i.type + '/' + i.color).join(', '));
+  // 4. Nothing matches — the robot looks around instead of scolding.
+  reset(0);
+  Game.handle(s.takeGhost);
+  run();
+  check('a thing that is not there — the robot shrugs',
+    said.some((t) => s.notFound.test(t)), said.join(' | '));
 
-// 7. Взяли, но не сказали куда — робот держит и спрашивает.
-reset(4);
-Game.handle('положи красный мяч');
-run();
-check('без адресата робот держит предмет и спрашивает, куда',
-  Scene.robot().hold.length === 1 && said.some((t) => /куда/i.test(t)),
-  said.join(' | '));
+  // 5. Unintelligible — the fault is the robot's and the room's.
+  reset(0);
+  Game.handle(s.nonsense);
+  run();
+  check('unintelligible speech — the robot got distracted itself',
+    said.some((t) => s.distracted.test(t)), said.join(' | '));
 
-// 8. Две коробки — неоднозначность переезжает на адресата.
-reset(5);
-Game.handle('положи мяч в коробку');
-run();
-check('две коробки — робот путается в адресате, а не молча выбирает',
-  said.some((t) => /уронил|удержать|неуклюж/i.test(t)),
-  said.join(' | '));
+  // 6. Preposition: the thing ends up inside the box.
+  reset(4);
+  Game.handle(s.putRed);
+  run();
+  check('"put ... in the box" removes the ball from the floor',
+    !Scene.all().some((i) => i.type === 'ball' && i.color === 'red'),
+    Scene.all().map((i) => i.type + '/' + i.color).join(', '));
 
-// 9. Смена уровня посреди действия не должна тащить за собой старые реплики.
-// Ловится только так: в браузере это выглядит как «робот иногда говорит
-// невпопад», и концов потом не найти.
-reset(0);
-Game.handle('возьми мяч');
-runSome(5);                      // робот только тронулся с места
-said.length = 0;
-Game.load(canvas, 4);            // ушли на другой уровень посреди действия
-run();                           // и просто дали кадрам доиграть
-check('после смены уровня не звучат подсказки от прошлой сцены',
-  !said.some((t) => /разного цвета|уронил|удержать/i.test(t)),
-  said.join(' | '));
+  // 7. Picked up, but no destination given.
+  reset(4);
+  Game.handle(s.putNoDest);
+  run();
+  check('with no destination the robot holds on and asks where',
+    Scene.robot().hold.length === 1 && said.some((t) => s.asksWhere.test(t)),
+    said.join(' | '));
 
-console.log(failed ? `\nПровалов: ${failed}` : '\nВсё сошлось.');
+  // 8. Two boxes — the ambiguity moves to the destination.
+  reset(5);
+  Game.handle(s.putAny);
+  run();
+  check('two boxes — the robot fumbles instead of silently choosing',
+    said.some((t) => s.dropped.test(t)), said.join(' | '));
+
+  // 9. Changing level mid-action must not drag old lines along. Only this
+  // catches it: in the browser it shows up as "the robot sometimes says
+  // something odd", with no way to trace it.
+  reset(0);
+  Game.handle(s.takeAny);
+  runSome(5);                      // the robot has barely set off
+  said.length = 0;
+  Game.load(canvas, 4);            // moved to another level mid-action
+  run();                           // and simply let the frames play out
+  check('no hints from the previous scene after a level change',
+    !said.some((t) => s.hintish.test(t)), said.join(' | '));
+});
+
+console.log(failed ? `\nFailures: ${failed}` : '\nAll good.');
 process.exit(failed ? 1 : 0);

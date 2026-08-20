@@ -1,10 +1,10 @@
 node_modules/
 .env
 
-# Рабочий журнал — для себя, не для репозитория.
+# Working journal — kept locally, not part of the repository.
 STEPS.md
 
-# мусор ОС и редакторов
+# OS and editor debris
 Thumbs.db
 desktop.ini
 .DS_Store

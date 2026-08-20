@@ -1,130 +1,150 @@
-# Замысел
+# Design notes
 
-Зачем игра устроена именно так и какие решения приняты сознательно. Читать
-перед тем, как что-то менять: половина здешних странностей — не недоделки.
+Why the game is built the way it is, and which decisions were deliberate.
+Worth reading before changing anything: half of the oddities here are not
+unfinished work.
 
-## Что тренируется
+## What is actually being trained
 
-Не словарный запас и не произношение. **Прагматика речи** — умение сказать
-так, чтобы тебя понял тот, кто не читает твоих мыслей.
+Not vocabulary, and not pronunciation. **Pragmatics** — being able to say
+something so that a person who cannot read your mind understands it.
 
-Это отдельный навык, и он не появляется сам собой от того, что ребёнок много
-говорит. В психолингвистике для него есть класс задач — referential
-communication: описать предмет собеседнику, который не видит того, что видишь
-ты. Дошкольник описывает эгоцентрично — «такой, как вчера», «как мамина
-юбка», — и искренне не понимает, почему его не поняли.
+That is a separate skill, and it does not simply appear because a child talks
+a lot. Psycholinguistics has a whole class of tasks for it — referential
+communication: describe an object to someone who cannot see what you see.
+A preschooler describes egocentrically — "the one like yesterday", "like
+mum's skirt" — and genuinely does not see why they were not understood.
 
-Ниша пустая: детский софт занимается либо артикуляцией (логопедические
-приложения — как выговаривать «р»), либо программированием в блоках.
-Умение быть понятым не тренирует почти никто.
+The niche is empty for a reason: software for children deals either with
+articulation (speech-therapy apps: how to pronounce a sound) or with block
+programming. Almost nobody trains the ability to be understood.
 
-## Главный механизм
+## The core mechanism
 
-Неполная команда **не отвергается, а выполняется буквально**.
+An incomplete command is **not rejected — it is obeyed literally**.
 
-Это стержень всей игры, и любое отступление от него ломает её целиком.
-«Возьми мяч» при трёх мячах — не ошибка ввода, а честно выполненная команда:
-робот берёт все три и роняет. Уточнение рождается само собой, без единого
-нравоучения.
+This is the spine of the game, and stepping away from it breaks everything
+else. "Take the ball" with three balls present is not an input error but a
+faithfully executed command: the robot takes all three and drops them. The
+correction comes from the child unprompted, without a word of moralising.
 
-Ровно поэтому робот **никогда не говорит «я не понял»**. Отказ — это тупик и
-обида. Робот всегда что-то делает.
+That is exactly why the robot **never says "I don't understand"**. A refusal
+is a dead end and an insult. The robot always does something.
 
-## Три правила
+## The three rules
 
-### 1. Вина всегда на роботе
+### 1. The robot is always at fault
 
-«Ой, я такой неуклюжий», а не «ты сказал неточно». Ребёнок четырёх лет и так
-десять раз на дню слышит, что его не поняли. Игра, которая делает то же самое,
-просто ещё один взрослый, который недоволен.
+"Oops, I'm such a clumsy thing", never "you were not precise enough". A
+four-year-old already hears ten times a day that they were not understood. A
+game that does the same is just one more dissatisfied adult.
 
-### 2. Проиграть нельзя
+### 2. Losing is impossible
 
-Ни очков, ни таймеров, ни звука ошибки, ни слова «неправильно». Только «ещё не
-получилось». Ставка здесь высокая: речь — самое уязвимое место дошкольника, и
-одного унижения хватит, чтобы он замолчал совсем.
+No score, no timer, no error sound, no word for "wrong". Only "not yet". The
+stakes are high here: speech is the most vulnerable thing a preschooler owns,
+and one humiliation is enough to make them go quiet altogether.
 
-### 3. Подсказывается форма, а не ответ
+### 3. Hint the shape, never the answer
 
-Робот называет **измерение**, которого не хватило, но не значение:
+The robot names the **dimension** that was missing, but not the value:
 
-> — их тут три… и они разного цвета. Какой брать?
+> — there are three of them… and they're different colours. Which one?
 
-Не «скажи: красный». Иначе ребёнок повторяет за роботом и не учится ничему —
-это разница между подсказкой и списыванием.
+Not "say: red". Otherwise the child repeats after the robot and learns
+nothing — that is the difference between a hint and copying.
 
-Технически: `hintKey()` в `game.js` смотрит, чем найденные предметы отличаются
-друг от друга, и называет первое различие — вид, цвет или размер.
+Technically: `hintKey()` in `game.js` looks at how the matched things differ
+and names the first difference — kind, colour or size.
 
-## Как растут уровни
+## How the levels grow
 
-Уровень — это не «сложность», а **одно новое слово**, без которого не
-обойтись. Сцена всегда подобрана так, что короткая команда обязана привести к
-путанице.
+A level is not a "difficulty step" but **one new word** the child cannot do
+without. The scene is always arranged so that the short command is bound to go
+wrong.
 
-| | Что осваивается | Почему нельзя иначе |
+| | What is learned | Why nothing else works |
 |---|---|---|
-| 1 | цвет | три мяча, отличаются только цветом |
-| 2 | размер | оба мяча синие — цвет не спасает |
-| 3 | название предмета | оба жёлтые и одного размера |
-| 4 | два признака сразу | «красный» — их два, «большой» — тоже два |
-| 5 | предлог «в» | появляется адресат, мало сказать «что» |
-| 6 | уточнение адресата | коробки две |
+| 1 | colour | three balls, differing only in colour |
+| 2 | size | both balls are blue, so colour is no help |
+| 3 | naming the thing | both are yellow and the same size |
+| 4 | two properties at once | "red" gives two, "big" gives two |
+| 5 | the preposition "in" | a destination appears; naming the thing is not enough |
+| 6 | naming the destination | there are two boxes |
 
-Дальше (пока не сделано) идут последовательности — «сначала… потом…» — и
-условия: «если коробка полная, поставь на стол». Последняя ступень — это уже
-алгоритмическое мышление, программирование без единой строчки кода. Игра
-незаметно переезжает из речи в логику, и за счёт этого живёт года четыре, а не
-полгода, как обычное детское приложение.
+Beyond that (not built yet) come sequences — "first… then…" — and conditions:
+"if the box is full, put it on the table". That last step is already
+algorithmic thinking, programming without a line of code. The game quietly
+moves from speech into logic, which is what gives it a four-year lifespan
+instead of the usual six months.
 
-## Почему голос, а не кнопки
+## Why voice rather than buttons
 
-Кнопочные и блочные версии существуют — Bee-Bot, ScratchJr, Lightbot. Там
-ребёнок собирает команду из готовых кубиков, и это про синтаксис
-программирования.
+Button and block versions exist — Bee-Bot, ScratchJr, Lightbot. There the
+child assembles a command out of ready-made pieces, and that is about
+programming syntax.
 
-Здесь тренируется **живая речь**, та самая, которой ребёнок пользуется с
-мамой. И работает это до умения читать.
+Here it is **live speech** being trained, the same speech the child uses with
+their mother. And it works before they can read.
 
-## Главный риск
+## Two languages, one switch
 
-**Распознавание детской речи.** Всё держится на нём.
+The language decides far more than button labels: which words can be
+recognised, which language the recogniser listens in, and which voice reads
+the lines. All of it hangs off one switch in `i18n.js`, because a partial
+switch is worse than none — a robot that hears English and answers in Russian
+is simply broken.
 
-Речь четырёхлетки для распознавалки — худший случай: высокий голос, смазанная
-артикуляция, проглоченные окончания, а модели обучены в основном на взрослых.
+Fuzzy matching behaves differently in the two languages, and that is not an
+oversight. Russian words are long, so a misheard "кащный" is still two edits
+from "красный" and can be recovered. English words are short: "ball" is one
+edit from "wall", "call" and "tall", so English leans on exact matching and
+gets less tolerance for mangled pronunciation. Worth knowing before blaming
+the dictionary.
 
-Что делается, чтобы вытянуть:
+## The main risk
 
-- **закрытый словарь** вместо свободного распознавания. Система заранее знает
-  все слова, которые вообще могут прозвучать, и сопоставляет только с ними;
-- **допуск на искажения** — «кащный» должен попадать в «красный»
+**Recognising child speech.** Everything rests on it.
+
+For a recogniser, a four-year-old is the worst case: a high voice, smeared
+articulation, swallowed endings — and the models are trained mostly on adults.
+
+What is done to make it survivable:
+
+- **a closed dictionary** instead of open recognition. The system knows in
+  advance every word that could possibly be said, and matches only against
+  those;
+- **tolerance for mangling** — "кащный" has to land on "красный"
   (`assets/match.js`);
-- **провал распознавания не показывается ребёнку.** Если не расслышали, робот
-  отвлекается сам: «ой, я загляделся, скажи ещё разок?» Вина снова на нём.
+- **recognition failures are never shown to the child.** If nothing was heard,
+  the robot distracts itself: "oops, I got distracted, say it again?" The
+  fault stays with the robot.
 
-Проверяется это на живом ребёнке за один вечер — `tools/test-mic.html`. До
-того, как вкладываться в остальное.
+This is checked on a real child in one evening — `tools/test-mic.html` — before
+investing in anything else.
 
-## Что решено не делать
+## Deliberately not done
 
-- **Не оценивать речь.** Никаких «ты сказал 8 из 10 команд правильно» —
-  ребёнку. Родителю показать прогресс можно и нужно, ребёнку нельзя.
-- **Не подсказывать словами робота.** См. правило 3.
-- **Не делать красиво раньше времени.** Робот — кружки и прямоугольники,
-  пока не проверена главная гипотеза.
-- **Не добавлять свободный разбор языка.** Словарь и ключевые слова
-  надёжнее любого NLP на такой речи, и отлаживается он глазами.
+- **No grading the child's speech.** No "you got 8 out of 10 commands right" —
+  not to the child. A parent may and should see progress; the child must not.
+- **No hints in the robot's words.** See rule 3.
+- **No visual polish yet.** The robot is circles and rectangles until the main
+  hypothesis is confirmed.
+- **No open-ended language parsing.** A dictionary and keywords are more
+  reliable on this kind of speech than any NLP, and they can be debugged by
+  eye.
 
-## Куда расти
+## Where it could go
 
-**Смена ролей.** Робот командует, ребёнок исполняет: «принеси что-нибудь
-мягкое». Ребёнок вылезает из-за экрана и носится по квартире, а побывав
-исполнителем, куда быстрее понимает, зачем нужна точность.
+**Role reversal.** The robot gives orders and the child carries them out:
+"bring me something soft". The child leaves the screen and runs around the
+flat — and having been the executor, understands much faster why precision
+matters.
 
-**Игра вдвоём.** Один видит картинку и описывает, второй собирает по описанию
-— та самая referential task в чистом виде. Робот работает арбитром. Заодно
-решает вечную проблему двух детей и одного экрана.
+**Two players.** One sees a picture and describes it, the other assembles it
+from the description — the referential task in its pure form, with the robot
+as referee. It also solves the eternal problem of two children and one screen.
 
-**Отчёт родителю.** Не активность в приложении, а рост: «месяц назад — „дай
-то", сейчас — „дай большой синий кубик"». Это единственная метрика, которая
-здесь что-то значит.
+**A report for the parent.** Not app activity but growth: "a month ago it was
+'gimme that', now it is 'give me the big blue cube'". That is the only metric
+here that means anything.

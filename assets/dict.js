@@ -1,100 +1,126 @@
-// Словарь игры: всё, что робот вообще способен услышать.
+// Everything the robot is able to hear, in every language it speaks.
 //
-// Распознавание НЕ свободное. Браузер отдаёт нам строку целиком, а мы
-// выдёргиваем из неё знакомые слова и остальное выбрасываем. Ребёнок скажет
-// «ну возьми пожалуйста вон тот красненький мячик» — нам нужны три слова из
-// девяти, и такой подход резко надёжнее любого разбора фразы.
+// Recognition is NOT open-ended. The browser hands us a whole sentence and we
+// pull out the words we know, discarding the rest. A child says "well please
+// pick up that little red ball over there" — we need three words out of nine,
+// and that beats parsing grammar every time.
 //
-// У каждого понятия два списка, и работают они по-разному:
+// Each concept carries two lists, and they behave differently:
 //
-//   roots — начала слов. Ловят падежи и уменьшительные разом:
-//           «красн» → красный, красная, красненький. Сравнение точное,
-//           поэтому корень должен быть таким, чтобы не хватать чужое:
-//           «мал» поймает и «малиновый», а «мален» — уже нет.
+//   roots — word beginnings, matched exactly. They cover inflections in one
+//           stroke: Russian "красн" catches красный/красная/красненький,
+//           English "ball" catches ball/balls. Because the match is exact, a
+//           root must be picked so it cannot grab something else: Russian
+//           "мал" would swallow "малиновый" (raspberry-coloured), so the root
+//           is "мален" instead.
 //
-//   words — целые слова. Только они сравниваются с допуском на детскую
-//           речь, и потому здесь нужны ПОЛНЫЕ формы, а не корни:
-//           «кащный» отличается от «красный» на две правки, а от корня
-//           «красн» — на три, и через корень уже не пройдёт.
+//   words — whole words. These are the only ones compared fuzzily, so they
+//           must be FULL forms rather than stems: the misheard "кащный" is
+//           two edits away from "красный" but three away from the stem
+//           "красн", and would never match through a root.
 //
-// Правило при пополнении: услышали от ребёнка новое слово — кладите его
-// целиком в words, а не режьте на корень. И сразу прогоняйте
-// tools/test-parser.js: одно добавленное слово легко ломает соседнее.
+// When you add a word a real child said: put it in `words` whole, do not chop
+// it into a stem, and run tools/test-parser.js immediately. One added word
+// breaks a neighbouring one more often than you would think.
+//
+// Russian gets far more mileage out of fuzzy matching than English does:
+// its words are longer, and length is what makes fuzzy comparison safe. Short
+// English words like "ball" or "red" are matched exactly — see match.js.
 (function () {
   'use strict';
 
-  window.DICT = {
-    // ── что делать ──────────────────────────────────────────────────────
-    actions: {
-      take: {
-        title: 'взять',
-        roots: ['возьм', 'взят', 'бер', 'брат', 'подним', 'доста', 'хвата'],
-        words: ['дай', 'дать', 'возьми', 'подними', 'достань']
+  window.WORDS = {
+
+    // ── Russian ─────────────────────────────────────────────────────────
+    ru: {
+      actions: {
+        take: {
+          title: 'взять',
+          roots: ['возьм', 'взят', 'бер', 'брат', 'подним', 'доста', 'хвата'],
+          words: ['дай', 'дать', 'возьми', 'подними', 'достань']
+        },
+        put: {
+          title: 'положить',
+          // "убер" has to be a root: routed through `words`, "убери" latches
+          // onto "бери" from take and the robot picks up instead of putting.
+          roots: ['полож', 'постав', 'клад', 'убер', 'слож', 'засун'],
+          words: ['положи', 'поставь', 'убери', 'сложи']
+        }
       },
-      put: {
-        title: 'положить',
-        // «убер» обязан быть корнем: через words «убери» цепляется за
-        // «бери» из take, и робот берёт вместо того, чтобы класть.
-        roots: ['полож', 'постав', 'клад', 'убер', 'слож', 'засун'],
-        words: ['положи', 'поставь', 'убери', 'сложи']
+      colors: {
+        red:    { title: 'красный', roots: ['красн'], words: ['красный', 'красная', 'красную'] },
+        blue:   { title: 'синий',   roots: ['син'],   words: ['синий', 'синяя', 'синюю'] },
+        yellow: { title: 'жёлтый',  roots: ['жёлт', 'желт'], words: ['жёлтый', 'жёлтая', 'желтый'] },
+        green:  { title: 'зелёный', roots: ['зелён', 'зелен'], words: ['зелёный', 'зелёная', 'зеленый'] }
+      },
+      sizes: {
+        big:   { title: 'большой',   roots: ['больш', 'крупн'], words: ['большой', 'большая', 'большую'] },
+        // The root "мал" is off limits — it grabs "малиновый".
+        small: { title: 'маленький', roots: ['мален', 'малы', 'мелк'], words: ['маленький', 'маленькая', 'малый'] }
+      },
+      types: {
+        ball: { title: 'мяч',     roots: ['мяч', 'шар'], words: ['мяч', 'мячик', 'шар', 'шарик'] },
+        cube: { title: 'кубик',   roots: ['куб'],        words: ['кубик', 'кубики', 'куб'] },
+        box:  { title: 'коробка', roots: ['короб', 'ящик'], words: ['коробка', 'коробку', 'ящик'] }
+      },
+      // The preposition splits the sentence: "put the ball IN the box".
+      // Without that split two sets of adjectives in one sentence cannot be
+      // told apart — no way to know what goes where.
+      preps: {
+        into: { title: 'в', roots: [], words: ['в', 'во', 'внутрь'] },
+        onto: { title: 'на', roots: [], words: ['на'] }
       }
     },
 
-    // ── какого цвета ────────────────────────────────────────────────────
-    colors: {
-      red: {
-        title: 'красный', css: '#e8503a',
-        roots: ['красн'], words: ['красный', 'красная', 'красную']
+    // ── English ─────────────────────────────────────────────────────────
+    en: {
+      actions: {
+        take: {
+          title: 'take',
+          roots: ['take', 'takes', 'pick', 'grab', 'bring', 'lift', 'fetch'],
+          words: ['get', 'give', 'hand']
+        },
+        put: {
+          title: 'put',
+          // "drop" stays out on purpose: the robot dropping things is its own
+          // gag, and a child shouting "drop it!" should not read as tidying up.
+          roots: ['put', 'place', 'stack'],
+          words: ['tidy']
+        }
       },
-      blue: {
-        title: 'синий', css: '#3d7ee8',
-        roots: ['син'], words: ['синий', 'синяя', 'синюю']
+      // English colours carry no roots at all. There is nothing to inflect
+      // here, and a root would do real damage: "red" swallows "redo", "blue"
+      // swallows "blueberry". Exact words only.
+      colors: {
+        red:    { title: 'red',    roots: [], words: ['red'] },
+        blue:   { title: 'blue',   roots: [], words: ['blue'] },
+        yellow: { title: 'yellow', roots: [], words: ['yellow'] },
+        green:  { title: 'green',  roots: [], words: ['green'] }
       },
-      yellow: {
-        title: 'жёлтый', css: '#f2c230',
-        roots: ['жёлт', 'желт'], words: ['жёлтый', 'жёлтая', 'желтый']
+      sizes: {
+        big:   { title: 'big',   roots: ['big', 'large', 'huge'],   words: ['big', 'large'] },
+        small: { title: 'small', roots: ['small', 'littl', 'tiny'], words: ['small', 'little'] }
       },
-      green: {
-        title: 'зелёный', css: '#4bb563',
-        roots: ['зелён', 'зелен'], words: ['зелёный', 'зелёная', 'зеленый']
+      types: {
+        // Same reason "ball" is not a root: it would catch "balloon".
+        ball: { title: 'ball', roots: [], words: ['ball', 'balls'] },
+        cube: { title: 'cube', roots: ['cube', 'block', 'brick'], words: ['cube', 'block', 'brick'] },
+        box:  { title: 'box',  roots: ['box', 'bin', 'basket'],   words: ['box', 'boxes', 'bin'] }
+      },
+      preps: {
+        into: { title: 'in', roots: [], words: ['in', 'into', 'inside'] },
+        onto: { title: 'on', roots: [], words: ['on', 'onto'] }
       }
-    },
-
-    // ── какого размера ──────────────────────────────────────────────────
-    sizes: {
-      big: {
-        title: 'большой',
-        roots: ['больш', 'крупн'], words: ['большой', 'большая', 'большую']
-      },
-      small: {
-        title: 'маленький',
-        // Корень «мал» брать нельзя — он хватает «малиновый».
-        roots: ['мален', 'малы', 'мелк'], words: ['маленький', 'маленькая', 'малый']
-      }
-    },
-
-    // ── что именно ──────────────────────────────────────────────────────
-    types: {
-      ball: {
-        title: 'мяч',
-        roots: ['мяч', 'шар'], words: ['мяч', 'мячик', 'шар', 'шарик']
-      },
-      cube: {
-        title: 'кубик',
-        roots: ['куб'], words: ['кубик', 'кубики', 'куб']
-      },
-      box: {
-        title: 'коробка',
-        roots: ['короб', 'ящик'], words: ['коробка', 'коробку', 'ящик']
-      }
-    },
-
-    // ── куда класть ─────────────────────────────────────────────────────
-    // Предлог отделяет цель от адресата: «положи мяч В коробку». Без него
-    // два набора признаков в одной фразе не различить — непонятно, что куда.
-    preps: {
-      into: { title: 'в', roots: [], words: ['в', 'во', 'внутрь'] },
-      onto: { title: 'на', roots: [], words: ['на'] }
     }
+  };
+
+  // The active dictionary. Every other module reads plain `DICT`, so switching
+  // languages is a single reassignment rather than threading a language
+  // argument through the parser, the scene and the rules.
+  window.DICT = window.WORDS.ru;
+
+  window.setDictLang = function (lang) {
+    window.DICT = window.WORDS[lang] || window.WORDS.ru;
+    return window.DICT;
   };
 })();

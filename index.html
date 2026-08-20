@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="ru">
+<html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Бип — робот, который понимает буквально</title>
+<title>Bip — the robot that takes you literally</title>
 <style>
   :root {
     --ink: #26313d;
@@ -28,8 +28,8 @@
 
   .stage { position: relative; }
 
-  /* Крупная кнопка микрофона: ребёнок жмёт её сам, читать он ещё не умеет,
-     поэтому вся кнопка — один большой значок с понятным состоянием. */
+  /* A big microphone button: the child presses it themselves and cannot read
+     yet, so the whole thing is one large target with an obvious state. */
   .mic {
     position: absolute; left: 50%; bottom: 16px; transform: translateX(-50%);
     display: flex; align-items: center; gap: 10px;
@@ -49,7 +49,16 @@
   .panel h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em;
               color: var(--muted); margin: 0 0 10px; }
 
-  .lvl-name { font-size: 20px; font-weight: 700; margin: 0 0 4px; }
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+  .langs { display: flex; gap: 4px; }
+  .langs button {
+    border: 1px solid var(--line); background: #fff; color: var(--muted);
+    border-radius: 7px; padding: 3px 9px; font: inherit; font-size: 12px;
+    text-transform: uppercase; cursor: pointer;
+  }
+  .langs button.on { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+  .lvl-name { font-size: 20px; font-weight: 700; margin: 6px 0 4px; }
   .lvl-learn { display: inline-block; font-size: 12px; padding: 2px 9px;
                border-radius: 999px; background: #efe6d2; color: var(--muted);
                margin-bottom: 10px; }
@@ -61,8 +70,9 @@
   button.b:hover { background: #f6f1e6; }
   button.b[disabled] { opacity: .4; cursor: default; }
 
-  /* Ввод текстом — не для ребёнка, а для взрослого: проверить логику, когда
-     микрофона нет или когда надоело говорить вслух при отладке. */
+  /* Typing commands is for the grown-up, not the child: a way to check the
+     rules when there is no microphone, or when saying it all out loud during
+     debugging has worn thin. */
   .say { display: flex; gap: 8px; margin-top: 10px; }
   .say input { flex: 1; min-width: 0; font: inherit; padding: 8px 10px;
                border: 1px solid var(--line); border-radius: 9px; background: #fff; }
@@ -90,35 +100,39 @@
 <div class="wrap">
   <div class="stage">
     <canvas id="cv"></canvas>
-    <button class="mic" id="mic"><span class="dot"></span><span id="micText">Говорить</span></button>
+    <button class="mic" id="mic"><span class="dot"></span><span id="micText"></span></button>
   </div>
 
   <div>
     <div class="warn" id="warn" hidden></div>
 
     <div class="panel">
-      <h2>Задание <span id="lvlNum"></span></h2>
+      <div class="head">
+        <h2 style="margin:0"><span id="taskLabel"></span> <span id="lvlNum"></span></h2>
+        <div class="langs" id="langs"></div>
+      </div>
       <p class="lvl-name" id="lvlName"></p>
       <span class="lvl-learn" id="lvlLearn"></span>
       <p class="lvl-task" id="lvlTask"></p>
       <div class="row">
-        <button class="b" id="again">Сначала</button>
-        <button class="b" id="next">Дальше →</button>
+        <button class="b" id="again"></button>
+        <button class="b" id="next"></button>
       </div>
       <div class="say">
-        <input id="text" placeholder="или напишите команду" autocomplete="off">
-        <button class="b" id="send">Ок</button>
+        <input id="text" autocomplete="off">
+        <button class="b" id="send"></button>
       </div>
     </div>
 
     <div class="panel">
-      <h2>Что услышал Бип</h2>
+      <h2 id="logTitle"></h2>
       <ul class="log" id="log"></ul>
     </div>
   </div>
 </div>
 
 <script src="assets/dict.js"></script>
+<script src="assets/i18n.js"></script>
 <script src="assets/match.js"></script>
 <script src="assets/parser.js"></script>
 <script src="assets/speech.js"></script>
@@ -147,32 +161,70 @@
     while (logEl.children.length > 40) logEl.removeChild(logEl.lastChild);
   }
 
+  // ── language ──────────────────────────────────────────────────────────
+  // Switching the language changes what the robot hears, what it says and
+  // what is written on the buttons, so everything is redrawn and the level is
+  // reloaded — its texts come from the language pack too.
+  function applyLang() {
+    document.documentElement.lang = Lang.get();
+    document.title = Lang.t('title');
+
+    micText.textContent = listening ? Lang.t('ui.listening') : Lang.t('ui.speak');
+    document.getElementById('taskLabel').textContent = Lang.t('ui.task');
+    document.getElementById('again').textContent = Lang.t('ui.again');
+    document.getElementById('next').textContent = Lang.t('ui.next');
+    document.getElementById('send').textContent = Lang.t('ui.send');
+    document.getElementById('text').placeholder = Lang.t('ui.typeHere');
+    document.getElementById('logTitle').textContent = Lang.t('ui.logTitle');
+
+    drawLangs();
+  }
+
+  function drawLangs() {
+    var box = document.getElementById('langs');
+    box.innerHTML = '';
+    Lang.list.forEach(function (code) {
+      var b = document.createElement('button');
+      b.textContent = code;
+      if (code === Lang.get()) b.className = 'on';
+      b.addEventListener('click', function () {
+        if (code === Lang.get()) return;
+        Lang.set(code);
+        Speech.relang();
+        applyLang();
+        Game.again(cv);
+      });
+      box.appendChild(b);
+    });
+  }
+
   Game.init({
-    onHeard: function (phrase, understood) { log('ребёнок', phrase, 'понял как: ' + understood); },
-    onSay:   function (text) { log('Бип', text, '', 'bip'); },
-    onLevel: function (level, i, total) {
-      document.getElementById('lvlNum').textContent = (i + 1) + ' из ' + total;
-      document.getElementById('lvlName').textContent = level.name;
-      document.getElementById('lvlLearn').textContent = 'учимся: ' + level.learn;
-      document.getElementById('lvlTask').textContent = level.task;
+    onHeard: function (phrase, understood) {
+      log(Lang.t('ui.child'), phrase, Lang.t('ui.understood') + ' ' + understood);
+    },
+    onSay: function (text) { log('Bip', text, '', 'bip'); },
+    onLevel: function (texts, i, total) {
+      document.getElementById('lvlNum').textContent = (i + 1) + ' ' + Lang.t('ui.of') + ' ' + total;
+      document.getElementById('lvlName').textContent = texts.name || '';
+      document.getElementById('lvlLearn').textContent = Lang.t('ui.learning') + ' ' + (texts.learn || '');
+      document.getElementById('lvlTask').textContent = texts.task || '';
       document.getElementById('next').disabled = (i + 1 >= total);
       logEl.innerHTML = '';
     },
-    onWin: function () { log('—', 'Задание пройдено', ''); }
+    onWin: function () { log('—', Lang.t('ui.complete'), ''); }
   });
 
+  applyLang();
   Game.load(cv, 0);
 
-  // ── микрофон ──────────────────────────────────────────────────────────
+  // ── microphone ────────────────────────────────────────────────────────
   if (!Speech.supported()) {
     warn.hidden = false;
-    warn.textContent = 'Этот браузер не умеет распознавать речь. Нужен Chrome или Edge — ' +
-                       'а пока можно писать команды в поле ниже.';
+    warn.textContent = Lang.t('ui.noSpeech');
     micBtn.disabled = true;
   } else if (location.protocol === 'file:') {
     warn.hidden = false;
-    warn.textContent = 'Страница открыта файлом — микрофон в таком режиме не работает. ' +
-                       'Запустите node server.js и откройте http://localhost:8080';
+    warn.textContent = Lang.t('ui.fileMode');
   }
 
   Speech.onPhrase(function (text) { Game.handle(text); });
@@ -180,20 +232,20 @@
   Speech.onState(function (state, text) {
     if (state === 'error') {
       warn.hidden = false;
-      warn.textContent = 'Микрофон не отвечает (' + text + '). Проверьте разрешение для сайта.';
+      warn.textContent = Lang.t('ui.micError') + ' (' + text + ')';
     }
     if (state === 'hearing' && text) micText.textContent = text.slice(0, 24);
-    if (state === 'listening') micText.textContent = 'Слушаю…';
+    if (state === 'listening') micText.textContent = Lang.t('ui.listening');
   });
 
   micBtn.addEventListener('click', function () {
     listening = !listening;
     micBtn.classList.toggle('on', listening);
-    if (listening) { Speech.start(); micText.textContent = 'Слушаю…'; }
-    else { Speech.stop(); micText.textContent = 'Говорить'; }
+    if (listening) { Speech.start(); micText.textContent = Lang.t('ui.listening'); }
+    else { Speech.stop(); micText.textContent = Lang.t('ui.speak'); }
   });
 
-  // ── ввод текстом ──────────────────────────────────────────────────────
+  // ── typed input ───────────────────────────────────────────────────────
   var textEl = document.getElementById('text');
   function send() {
     var v = textEl.value.trim();

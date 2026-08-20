@@ -1,9 +1,9 @@
 <!doctype html>
-<html lang="ru">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Проверка слуха — понимает ли Бип ребёнка</title>
+<title>Hearing check — does Bip understand your child?</title>
 <style>
   body { margin: 0; padding: 24px; background: #efe6d2; color: #26313d;
          font: 16px/1.55 "Segoe UI", system-ui, sans-serif; }
@@ -19,6 +19,14 @@
   button { border: 0; border-radius: 999px; cursor: pointer; font: inherit;
            font-weight: 600; padding: 12px 24px; background: #e8503a; color: #fff; }
   button.on { background: #4bb563; }
+
+  .langs { display: inline-flex; gap: 4px; margin-left: 12px; vertical-align: middle; }
+  .langs button {
+    background: #fff; color: #6b7a89; border: 1px solid #dfd6c2;
+    border-radius: 7px; padding: 6px 12px; font-size: 13px; font-weight: 600;
+    text-transform: uppercase;
+  }
+  .langs button.on { background: #26313d; color: #fff; border-color: #26313d; }
 
   .score { display: flex; gap: 26px; margin-top: 14px; }
   .score b { display: block; font-size: 30px; line-height: 1.1; }
@@ -46,46 +54,48 @@
 <body>
 <div class="wrap">
 
-  <h1>Проверка слуха</h1>
+  <h1>Hearing check</h1>
   <p class="sub">
-    Единственный вопрос, от которого зависит весь проект: понимает ли браузер
-    речь четырёхлетнего ребёнка. Проверяется за один вечер — до того, как
-    писать игру дальше.
+    The one question the whole project hangs on: can the browser understand
+    the speech of a four-year-old? It takes an evening to answer — before
+    writing any more of the game.
   </p>
 
   <div class="card">
-    <h2>Как проверять</h2>
+    <h2>How to run it</h2>
     <p style="margin:0 0 10px">
-      Нажмите кнопку, дайте ребёнку сказать десять команд — своими словами,
-      не диктуя. Например: «возьми красный мяч», «дай маленький кубик»,
-      «положи мяч в коробку».
+      Press the button and let the child say ten commands in their own words,
+      without dictating. For example: "take the red ball", "give me the small
+      cube", "put the ball in the box".
     </p>
-    <button id="btn">Включить микрофон</button>
+    <button id="btn">Turn on the microphone</button>
+    <span class="langs" id="langs"></span>
 
     <div class="score">
-      <div><b id="nTotal">0</b><span>фраз услышано</span></div>
-      <div><b id="nGood">0</b><span>с понятными словами</span></div>
-      <div><b id="nRate">—</b><span>доля понятых</span></div>
+      <div><b id="nTotal">0</b><span>phrases heard</span></div>
+      <div><b id="nGood">0</b><span>with words we know</span></div>
+      <div><b id="nRate">—</b><span>share understood</span></div>
     </div>
 
     <div class="verdict wait" id="verdict">
-      Наберите хотя бы десять фраз — тогда цифры начнут что-то значить.
+      Collect at least ten phrases — only then do the numbers mean anything.
     </div>
   </div>
 
   <div class="card">
-    <h2>Какие слова ловятся</h2>
+    <h2>Words being caught</h2>
     <div class="words" id="words"></div>
   </div>
 
   <div class="card">
-    <h2>Что услышал браузер</h2>
+    <h2>What the browser heard</h2>
     <ul id="log"></ul>
   </div>
 
 </div>
 
 <script src="../assets/dict.js"></script>
+<script src="../assets/i18n.js"></script>
 <script src="../assets/match.js"></script>
 <script src="../assets/parser.js"></script>
 <script src="../assets/speech.js"></script>
@@ -100,7 +110,8 @@
   var logEl = document.getElementById('log');
   var wordsEl = document.getElementById('words');
 
-  // Все понятия словаря — чтобы видеть, что уже проверено, а что ещё нет.
+  // Every concept in the dictionary — so you can see what has been covered
+  // and what has not been tried yet.
   var GROUPS = ['actions', 'colors', 'sizes', 'types'];
 
   function drawWords() {
@@ -108,36 +119,58 @@
     GROUPS.forEach(function (g) {
       Object.keys(DICT[g]).forEach(function (key) {
         var el = document.createElement('span');
-        el.className = 'w' + (seen[g + '.' + key] ? ' hit' : '');
+        el.className = 'w' + (seen[Lang.get() + '.' + g + '.' + key] ? ' hit' : '');
         el.textContent = DICT[g][key].title;
         wordsEl.appendChild(el);
       });
     });
   }
+
+  // The check has to run in the language the child actually speaks, so the
+  // switch here changes the recogniser as well as the word list.
+  function drawLangs() {
+    var box = document.getElementById('langs');
+    box.innerHTML = '';
+    Lang.list.forEach(function (code) {
+      var b = document.createElement('button');
+      b.textContent = code;
+      if (code === Lang.get()) b.className = 'on';
+      b.addEventListener('click', function () {
+        if (code === Lang.get()) return;
+        Lang.set(code);
+        Speech.relang();
+        drawLangs();
+        drawWords();
+      });
+      box.appendChild(b);
+    });
+  }
+
+  drawLangs();
   drawWords();
 
   function verdict() {
     var el = document.getElementById('verdict');
     if (total < 10) {
       el.className = 'verdict wait';
-      el.textContent = 'Осталось ещё ' + (10 - total) + ' фраз — тогда цифры начнут что-то значить.';
+      el.textContent = (10 - total) + ' more phrases to go — only then do the numbers mean anything.';
       return;
     }
     var rate = good / total;
     if (rate >= 0.66) {
       el.className = 'verdict good';
-      el.textContent = 'Понимает ' + Math.round(rate * 100) + '% фраз. Этого достаточно: ' +
-                       'проект живой, можно писать игру дальше.';
+      el.textContent = 'Understands ' + Math.round(rate * 100) + '% of phrases. That is enough: ' +
+                       'the project is alive, carry on building the game.';
     } else if (rate >= 0.4) {
       el.className = 'verdict bad';
-      el.textContent = 'Понимает всего ' + Math.round(rate * 100) + '%. Игра будет раздражать. ' +
-                       'Сначала попробуйте микрофон получше и тихую комнату, потом — расширить ' +
-                       'списки слов в assets/dict.js под то, как говорит именно ваш ребёнок.';
+      el.textContent = 'Only ' + Math.round(rate * 100) + '% understood. The game will be annoying. ' +
+                       'Try a better microphone and a quiet room first, then widen the word lists in ' +
+                       'assets/dict.js to match how your child actually speaks.';
     } else {
       el.className = 'verdict bad';
-      el.textContent = 'Понимает ' + Math.round(rate * 100) + '% — это провал. ' +
-                       'Web Speech API не тянет такую речь. Дальше только локальный Whisper, ' +
-                       'а это другой объём работы: решайте до того, как рисовать робота.';
+      el.textContent = Math.round(rate * 100) + '% understood — that is a failure. ' +
+                       'The Web Speech API cannot handle this speech. The only way on is a local ' +
+                       'Whisper, which is a different scale of work: decide before drawing a robot.';
     }
   }
 
@@ -150,7 +183,7 @@
       var key = Match.find(text, DICT[g]);
       if (key) {
         found.push(DICT[g][key].title);
-        seen[g + '.' + key] = 1;
+        seen[Lang.get() + '.' + g + '.' + key] = 1;
       }
     });
     if (found.length) good++;
@@ -158,23 +191,24 @@
     var li = document.createElement('li');
     var said = document.createElement('div');
     said.className = 'said';
-    said.textContent = '«' + text + '»';
+    said.textContent = '"' + text + '"';
 
     var got = document.createElement('div');
     got.className = 'got' + (found.length ? '' : ' none');
     got.textContent = found.length
-      ? 'понял слова: ' + found.join(', ') + '  •  команда: ' + Parser.describe(cmd)
-      : 'знакомых слов нет';
+      ? 'words found: ' + found.join(', ') + '  •  command: ' + Parser.describe(cmd)
+      : 'no familiar words';
 
     li.appendChild(said);
     li.appendChild(got);
 
-    // Альтернативы важны: у детей нужный вариант часто оказывается вторым.
-    // Если так будет повторяться — стоит разбирать не только первый.
+    // Alternatives matter: with children the right reading is often the
+    // second one. If that keeps happening, consider parsing more than the
+    // first alternative.
     if (alts && alts.length > 1) {
       var a = document.createElement('div');
       a.className = 'alts';
-      a.textContent = 'ещё варианты: ' + alts.slice(1).join(' / ');
+      a.textContent = 'other readings: ' + alts.slice(1).join(' / ');
       li.appendChild(a);
     }
 
@@ -189,17 +223,17 @@
 
   Speech.onPhrase(add);
   Speech.onState(function (state, text) {
-    if (state === 'error') btn.textContent = 'Ошибка микрофона: ' + text;
+    if (state === 'error') btn.textContent = 'Microphone error: ' + text;
   });
 
   btn.addEventListener('click', function () {
     if (!Speech.supported()) {
-      btn.textContent = 'Этот браузер не умеет. Нужен Chrome или Edge';
+      btn.textContent = 'This browser cannot do it. Chrome or Edge required';
       return;
     }
     on = !on;
     btn.classList.toggle('on', on);
-    btn.textContent = on ? 'Слушаю… (нажмите, чтобы выключить)' : 'Включить микрофон';
+    btn.textContent = on ? 'Listening… (press to stop)' : 'Turn on the microphone';
     if (on) Speech.start(); else Speech.stop();
   });
 })();

@@ -1,29 +1,20 @@
-// Задания.
+// The levels — layout only. Every word a person reads or hears lives in
+// i18n.js, indexed by position in this array.
 //
-// Уровень — это не «сложность», а ОДНО новое слово, которого ребёнку не
-// хватит, если он скажет по-старому. Сцена всегда подобрана так, что
-// короткая команда обязана привести к путанице: скажешь «возьми мяч» при
-// трёх мячах — робот сгребёт все три. Это и есть урок, без единого
-// нравоучения.
+// A level is not a "difficulty step" but ONE new word the child cannot do
+// without. The scene is always arranged so that the short command is bound to
+// go wrong: say "take the ball" with three balls on the floor and the robot
+// scoops up all three. That is the lesson, and it needs no moralising.
 //
-// goal — описание предмета, которого не должно остаться на полу. Взятое в
-// руку и убранное в коробку из проверки выпадает, поэтому одно и то же
-// правило годится и для «возьми», и для «положи».
-//
-// intro — что робот говорит при появлении. Не задание для ребёнка: ребёнок
-// четырёх лет не запоминает задания на слух. Это приглашение поиграть.
-// Задание читает взрослый в панели сбоку — или не читает вовсе, и тогда
-// ребёнок командует что хочет, а это ничем не хуже.
+// goal — a description of the thing that must no longer be lying around.
+// Something held in the hand or tucked into a box drops out of the check, so
+// the same rule serves both "take" and "put".
 (function () {
   'use strict';
 
   window.LEVELS = [
     {
-      // Цвет. Самый первый признак, который дети осваивают.
-      name: 'Три мяча',
-      task: 'Попросите взять какой-нибудь один мяч. Скажите просто «возьми мяч» — увидите, что будет.',
-      learn: 'цвет',
-      intro: 'Привет! Я Бип. Скажи мне, что делать!',
+      // Colour. The first property children get a handle on.
       items: [
         { type: 'ball', color: 'red',    size: 'small', x: 330 },
         { type: 'ball', color: 'blue',   size: 'small', x: 520 },
@@ -33,11 +24,7 @@
     },
 
     {
-      // Размер. Цвет тут не поможет — оба мяча синие.
-      name: 'Большой и маленький',
-      task: 'Оба мяча синие. Одного цвета мало — понадобится слово про размер.',
-      learn: 'размер',
-      intro: 'Ой, а эти два похожи…',
+      // Size. Colour is no help here — both balls are blue.
       items: [
         { type: 'ball', color: 'blue', size: 'big',   x: 380 },
         { type: 'ball', color: 'blue', size: 'small', x: 640 }
@@ -46,11 +33,7 @@
     },
 
     {
-      // Вид предмета. Цвет одинаковый, размер одинаковый.
-      name: 'Мяч и кубик',
-      task: 'Оба жёлтые и одинаковые по размеру. Придётся назвать саму вещь.',
-      learn: 'название предмета',
-      intro: 'Тут два жёлтых. Какой тебе нужен?',
+      // The kind of thing. Same colour, same size.
       items: [
         { type: 'ball', color: 'yellow', size: 'small', x: 380 },
         { type: 'cube', color: 'yellow', size: 'small', x: 620 }
@@ -59,11 +42,7 @@
     },
 
     {
-      // Два признака сразу. Каждый по отдельности даёт двоих.
-      name: 'Четыре кубика',
-      task: 'Одного слова не хватит: «красный» — их два, «большой» — тоже два. Нужны оба сразу.',
-      learn: 'два признака вместе',
-      intro: 'Ух, сколько кубиков!',
+      // Two properties at once. Either one alone still leaves two candidates.
       items: [
         { type: 'cube', color: 'red',   size: 'big',   x: 300 },
         { type: 'cube', color: 'red',   size: 'small', x: 460 },
@@ -74,11 +53,7 @@
     },
 
     {
-      // Предлог: появляется адресат, а не только предмет.
-      name: 'Убираем в коробку',
-      task: 'Теперь мало сказать, что взять, — нужно сказать и куда. Слово «в» делает всю работу.',
-      learn: 'предлог «в»',
-      intro: 'Давай приберёмся! Куда всё это?',
+      // A preposition: now there is a destination, not just a thing.
       items: [
         { type: 'ball', color: 'red',   size: 'small', x: 330 },
         { type: 'cube', color: 'blue',  size: 'small', x: 470 },
@@ -88,12 +63,8 @@
     },
 
     {
-      // Две коробки: неоднозначность переезжает на адресата.
-      // Ребёнок уже умеет уточнять предмет — теперь то же самое про «куда».
-      name: 'Две коробки',
-      task: 'Коробки две. Сказать «в коробку» теперь недостаточно — Бип не знает, в какую.',
-      learn: 'уточнение адресата',
-      intro: 'У меня две коробки. Не перепутать бы!',
+      // Two boxes: the ambiguity moves to the destination. The child already
+      // knows how to pin down a thing — now the same trick applies to "where".
       items: [
         { type: 'ball', color: 'yellow', size: 'small', x: 380 },
         { type: 'box',  color: 'red',    size: 'big',   x: 620 },
